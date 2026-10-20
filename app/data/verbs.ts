@@ -1,0 +1,28 @@
+import type { Verb } from '~/types/verb'
+
+export const verbs: Verb[] = [
+  { spanish: 'ser/estar', base: 'be', past: 'was/were', participle: 'been' },
+  { spanish: 'ir', base: 'go', past: 'went', participle: 'gone' },
+  { spanish: 'comer', base: 'eat', past: 'ate', participle: 'eaten' },
+  { spanish: 'beber', base: 'drink', past: 'drank', participle: 'drunk' },
+  { spanish: 'ver', base: 'see', past: 'saw', participle: 'seen' },
+  { spanish: 'hacer', base: 'do', past: 'did', participle: 'done' },
+  { spanish: 'tener', base: 'have', past: 'had', participle: 'had' },
+  { spanish: 'venir', base: 'come', past: 'came', participle: 'come' },
+  { spanish: 'tomar', base: 'take', past: 'took', participle: 'taken' },
+  { spanish: 'escribir', base: 'write', past: 'wrote', participle: 'written' },
+  { spanish: 'hablar', base: 'speak', past: 'spoke', participle: 'spoken' },
+  { spanish: 'manejar/conducir', base: 'drive', past: 'drove', participle: 'driven' },
+  { spanish: 'volar', base: 'fly', past: 'flew', participle: 'flown' },
+  { spanish: 'romper', base: 'break', past: 'broke', participle: 'broken' },
+  { spanish: 'elegir', base: 'choose', past: 'chose', participle: 'chosen' },
+  { spanish: 'olvidar', base: 'forget', past: 'forgot', participle: 'forgotten' },
+  { spanish: 'dar', base: 'give', past: 'gave', participle: 'given' },
+  { spanish: 'saber/conocer', base: 'know', past: 'knew', participle: 'known' },
+  { spanish: 'empezar', base: 'begin', past: 'began', participle: 'begun' },
+  { spanish: 'nadar', base: 'swim', past: 'swam', participle: 'swum' },
+  { spanish: 'correr', base: 'run', past: 'ran', participle: 'run' },
+  { spanish: 'encontrar', base: 'find', past: 'found', participle: 'found' },
+  { spanish: 'hacer/fabricar', base: 'make', past: 'made', participle: 'made' },
+  { spanish: 'irse/dejar', base: 'leave', past: 'left', participle: 'left' },
+]
