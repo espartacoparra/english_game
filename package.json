@@ -6,12 +6,16 @@
     "build": "nuxt build",
     "dev": "nuxt dev",
     "generate": "nuxt generate",
-    "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "preview": "nuxt preview"
   },
   "dependencies": {
     "nuxt": "^4.6.2",
+    "sst": "4.17.2",
     "vue": "^3.5.44",
     "vue-router": "^5.4.0"
+  },
+  "overrides": {
+    "nitropack": "npm:nitropack-nightly@latest"
   }
 }

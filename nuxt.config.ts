@@ -4,5 +4,8 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   devServer: {
     port: 3010
+  },
+  nitro: {
+    preset: 'aws-lambda'
   }
 })

@@ -11,7 +11,7 @@ User requested an English verb trainer with multiple mini-games and per-session 
 
 ## Scope
 - In scope:
-  - Seed data: at least 20 common irregular verbs with Spanish translation, base form, simple past, and past participle.
+  - Seed data: 65 common irregular verbs with Spanish translation, base form, simple past, and past participle.
   - Type definitions for verbs and game state.
   - Composable for game setup, verb selection, answer validation, and score tracking.
   - Home page with game setup: choose verb count (5, 10, 15, 20 or all) and game mode.
@@ -32,7 +32,7 @@ User requested an English verb trainer with multiple mini-games and per-session 
 - Spanish UI copy is acceptable because the user wrote in Spanish and the game content mixes Spanish prompts with English answers; code identifiers and comments remain in English.
 
 ## Acceptance Criteria
-- [ ] `app/data/verbs.ts` exports a typed array of at least 20 irregular verbs.
+- [x] `app/data/verbs.ts` exports a typed array of 65 irregular verbs.
 - [ ] `app/types/verb.ts` defines `Verb`, `TenseKey`, and game mode types.
 - [ ] `app/composables/useVerbGame.ts` exposes setup, current question, answer handling, scoring, and reset.
 - [ ] `app/pages/index.vue` renders the setup screen.
