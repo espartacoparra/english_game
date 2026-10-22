@@ -6,7 +6,7 @@
 
 declare module "sst" {
   export interface Resource {
-    "MyWeb": {
+    "english-game": {
       "type": "sst.aws.Nuxt"
       "url": string
     }

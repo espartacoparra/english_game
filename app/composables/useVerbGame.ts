@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { verbs } from '~/data/verbs'
-import type { GameMode, GameResult, TenseKey, Verb } from '~/types/verb'
+import type { GameMode, GameResult, TenseKey, Verb, VerbLevel, VerbType } from '~/types/verb'
 
 export interface Card {
   id: string
@@ -10,12 +10,21 @@ export interface Card {
   matched: boolean
 }
 
+// Global game state
 const mode = ref<GameMode>('write-all')
 const verbCount = ref<number>(10)
+const selectedType = ref<VerbType | 'all'>('all')
+const selectedLevel = ref<VerbLevel | 'all'>('all')
 const selectedVerbs = ref<Verb[]>([])
 const currentIndex = ref<number>(0)
 const results = ref<GameResult[]>([])
 const isFinished = ref<boolean>(false)
+
+// Gameplay metrics
+const streak = ref<number>(0)
+const maxStreak = ref<number>(0)
+const sessionStartTime = ref<number>(0)
+const sessionDuration = ref<number>(0)
 
 function shuffle<T>(array: T[]): T[] {
   const arr = [...array]
@@ -26,20 +35,109 @@ function shuffle<T>(array: T[]): T[] {
   return arr
 }
 
-function normalizedCompare(a: string, b: string): boolean {
-  return a.trim().toLowerCase() === b.trim().toLowerCase()
+function normalizedCompare(userAnswer: string, expectedAnswer: string): boolean {
+  const u = userAnswer.trim().toLowerCase()
+  const exp = expectedAnswer.trim().toLowerCase()
+
+  if (u === exp) return true
+
+  // Handle slashes like "was/were" or alternative spellings
+  const parts = exp.split('/').map((s) => s.trim().toLowerCase())
+  if (parts.includes(u)) return true
+
+  // Common alternate forms
+  const alternates: Record<string, string[]> = {
+    learnt: ['learned'],
+    learned: ['learnt'],
+    burnt: ['burned'],
+    burned: ['burnt'],
+    dreamt: ['dreamed'],
+    dreamed: ['dreamt'],
+    smelt: ['smelled'],
+    smelled: ['smelt'],
+    spelt: ['spelled'],
+    spelled: ['spelt'],
+    spilt: ['spilled'],
+    spilled: ['spilt'],
+    gotten: ['got'],
+    got: ['gotten'],
+  }
+
+  if (alternates[exp] && alternates[exp].includes(u)) {
+    return true
+  }
+
+  return false
 }
 
-function setupGame(newMode: GameMode, count: number) {
+function filterVerbs(type: VerbType | 'all', level: VerbLevel | 'all'): Verb[] {
+  return verbs.filter((v) => {
+    const matchType = type === 'all' || v.type === type
+    const matchLevel = level === 'all' || v.level === level
+    return matchType && matchLevel
+  })
+}
+
+function setupGame(
+  newMode: GameMode,
+  count: number | 'all',
+  type: VerbType | 'all' = 'all',
+  level: VerbLevel | 'all' = 'all'
+) {
   mode.value = newMode
-  verbCount.value = Math.min(Math.max(1, count), verbs.length)
-  selectedVerbs.value = shuffle(verbs).slice(0, verbCount.value)
+  selectedType.value = type
+  selectedLevel.value = level
+
+  const pool = filterVerbs(type, level)
+  const available = pool.length > 0 ? pool : verbs
+  const limit = count === 'all' ? available.length : Math.min(Math.max(1, count), available.length)
+
+  verbCount.value = limit
+  selectedVerbs.value = shuffle(available).slice(0, limit)
   currentIndex.value = 0
   results.value = []
   isFinished.value = false
+  streak.value = 0
+  maxStreak.value = 0
+  sessionStartTime.value = Date.now()
+  sessionDuration.value = 0
+}
+
+function retryMistakes() {
+  const failed = results.value.filter((r) => !r.correct).map((r) => r.verb)
+  if (failed.length === 0) return
+
+  selectedVerbs.value = shuffle(failed)
+  verbCount.value = selectedVerbs.value.length
+  currentIndex.value = 0
+  results.value = []
+  isFinished.value = false
+  streak.value = 0
+  maxStreak.value = 0
+  sessionStartTime.value = Date.now()
 }
 
 const currentVerb = computed<Verb | null>(() => selectedVerbs.value[currentIndex.value] ?? null)
+
+function recordResult(result: GameResult) {
+  results.value.push(result)
+
+  if (result.correct) {
+    streak.value++
+    if (streak.value > maxStreak.value) {
+      maxStreak.value = streak.value
+    }
+  } else {
+    streak.value = 0
+  }
+
+  if (currentIndex.value < selectedVerbs.value.length - 1) {
+    currentIndex.value++
+  } else {
+    sessionDuration.value = Math.round((Date.now() - sessionStartTime.value) / 1000)
+    isFinished.value = true
+  }
+}
 
 function submitAnswers(answers: Record<TenseKey, string>) {
   const verb = currentVerb.value
@@ -56,16 +154,14 @@ function submitAnswers(answers: Record<TenseKey, string>) {
     normalizedCompare(trimmed.past, verb.past) &&
     normalizedCompare(trimmed.participle, verb.participle)
 
-  results.value.push({ verb, correct, userAnswers: trimmed })
-
-  if (currentIndex.value < selectedVerbs.value.length - 1) {
-    currentIndex.value++
-  } else {
-    isFinished.value = true
-  }
+  recordResult({ verb, correct, userAnswers: trimmed })
 }
 
 const score = computed<number>(() => results.value.filter((r) => r.correct).length)
+const accuracy = computed<number>(() => {
+  if (results.value.length === 0) return 0
+  return Math.round((score.value / results.value.length) * 100)
+})
 
 function resetGame() {
   mode.value = 'write-all'
@@ -74,6 +170,9 @@ function resetGame() {
   currentIndex.value = 0
   results.value = []
   isFinished.value = false
+  streak.value = 0
+  maxStreak.value = 0
+  sessionDuration.value = 0
 }
 
 function shuffleCards(verbsToShuffle: Verb[]): Card[] {
@@ -82,7 +181,7 @@ function shuffleCards(verbsToShuffle: Verb[]): Card[] {
 
   for (const verb of verbsToShuffle) {
     cards.push({
-      id: `${verb.base}-spanish`,
+      id: `${verb.base}-spanish-${Math.random().toString(36).substring(2, 7)}`,
       verb,
       tense: 'spanish',
       label: verb.spanish,
@@ -91,7 +190,7 @@ function shuffleCards(verbsToShuffle: Verb[]): Card[] {
 
     for (const tense of tenses) {
       cards.push({
-        id: `${verb.base}-${tense}`,
+        id: `${verb.base}-${tense}-${Math.random().toString(36).substring(2, 7)}`,
         verb,
         tense,
         label: verb[tense],
@@ -107,16 +206,25 @@ export function useVerbGame() {
   return {
     mode,
     verbCount,
+    selectedType,
+    selectedLevel,
     selectedVerbs,
     currentIndex,
     results,
     isFinished,
+    streak,
+    maxStreak,
+    sessionDuration,
     currentVerb,
     score,
+    accuracy,
     setupGame,
+    retryMistakes,
     submitAnswers,
+    recordResult,
     resetGame,
     shuffleCards,
+    filterVerbs,
     normalizedCompare,
   }
 }

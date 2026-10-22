@@ -1,0 +1,87 @@
+<style>
+  .vm-loader-wrap {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #07090e;
+    background: radial-gradient(circle at 50% 20%, #1e1b4b 0%, #090d16 55%, #05070a 100%);
+    color: #f8fafc;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    z-index: 999999;
+  }
+  .vm-loader-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 2.5rem;
+    text-align: center;
+    background: rgba(17, 24, 39, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(20px);
+    max-width: 320px;
+    width: 90%;
+  }
+  .vm-logo-box {
+    width: 68px;
+    height: 68px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 34px;
+    box-shadow: 0 0 35px rgba(99, 102, 241, 0.45);
+    animation: vm-pulse 2s infinite ease-in-out;
+  }
+  .vm-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.35rem;
+    color: #ffffff;
+  }
+  .vm-subtitle {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin: 0;
+  }
+  .vm-spinner-ring {
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #818cf8;
+    border-right-color: #c084fc;
+    border-radius: 50%;
+    animation: vm-spin 0.75s linear infinite;
+    margin-top: 0.5rem;
+  }
+  @keyframes vm-spin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes vm-pulse {
+    0%, 100% {
+      transform: scale(1);
+      box-shadow: 0 0 30px rgba(99, 102, 241, 0.4);
+    }
+    50% {
+      transform: scale(1.05);
+      box-shadow: 0 0 45px rgba(99, 102, 241, 0.7);
+    }
+  }
+</style>
+<div class="vm-loader-wrap">
+  <div class="vm-loader-card">
+    <div class="vm-logo-box">⚡</div>
+    <div>
+      <h2 class="vm-title">VerbMaster</h2>
+      <p class="vm-subtitle">Cargando práctica de verbos...</p>
+    </div>
+    <div class="vm-spinner-ring"></div>
+  </div>
+</div>
