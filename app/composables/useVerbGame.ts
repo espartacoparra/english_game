@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { verbs } from '~/data/verbs'
+import { useStats } from '~/composables/useStats'
 import type { GameMode, GameResult, TenseKey, Verb, VerbLevel, VerbType } from '~/types/verb'
 
 export interface Card {
@@ -117,17 +118,34 @@ function retryMistakes() {
   sessionStartTime.value = Date.now()
 }
 
+function setupCustomVerbsGame(customVerbs: Verb[], newMode: GameMode = 'write-all') {
+  if (customVerbs.length === 0) return
+  mode.value = newMode
+  selectedVerbs.value = shuffle(customVerbs)
+  verbCount.value = selectedVerbs.value.length
+  currentIndex.value = 0
+  results.value = []
+  isFinished.value = false
+  streak.value = 0
+  maxStreak.value = 0
+  sessionStartTime.value = Date.now()
+  sessionDuration.value = 0
+}
+
 const currentVerb = computed<Verb | null>(() => selectedVerbs.value[currentIndex.value] ?? null)
 
 function recordResult(result: GameResult) {
   results.value.push(result)
+  const { recordAnswer } = useStats()
 
   if (result.correct) {
+    recordAnswer(result.verb, true)
     streak.value++
     if (streak.value > maxStreak.value) {
       maxStreak.value = streak.value
     }
   } else {
+    recordAnswer(result.verb, false)
     streak.value = 0
   }
 
@@ -219,6 +237,7 @@ export function useVerbGame() {
     score,
     accuracy,
     setupGame,
+    setupCustomVerbsGame,
     retryMistakes,
     submitAnswers,
     recordResult,

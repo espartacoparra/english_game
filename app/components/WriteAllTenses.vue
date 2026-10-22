@@ -117,18 +117,6 @@ function handleNext() {
   })
 }
 
-function giveUpHint() {
-  const verb = currentVerb.value
-  if (!verb) return
-
-  answers.value = {
-    base: verb.base,
-    past: verb.past,
-    participle: verb.participle,
-  }
-  validateAnswers()
-  allCorrect.value = false // Not counting as solved alone
-}
 </script>
 
 <template>
@@ -212,15 +200,6 @@ function giveUpHint() {
 
         <!-- Action Buttons -->
         <div class="actions-footer">
-          <button
-            v-if="!hasSubmitted"
-            type="button"
-            class="hint-btn"
-            @click="giveUpHint"
-          >
-            💡 Ver respuesta
-          </button>
-
           <button class="submit-btn" type="submit">
             {{ hasSubmitted ? 'Siguiente verbo →' : 'Comprobar respuesta' }}
           </button>
@@ -454,23 +433,6 @@ function giveUpHint() {
   display: flex;
   gap: 0.75rem;
   margin-top: 1rem;
-}
-
-.hint-btn {
-  padding: 0.85rem 1.25rem;
-  background: transparent;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  color: var(--text-muted);
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.hint-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
 }
 
 .submit-btn {

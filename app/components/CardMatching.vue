@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useVerbGame } from '~/composables/useVerbGame'
+import { useStats } from '~/composables/useStats'
 import type { TenseKey, Verb } from '~/types/verb'
 import GameResults from './GameResults.vue'
 
@@ -14,6 +15,7 @@ interface StageOption {
 }
 
 const { selectedVerbs, normalizedCompare, resetGame } = useVerbGame()
+const { recordSuccess, recordMistake } = useStats()
 
 const ROUND_SIZE = 4
 const roundIndex = ref(0)
@@ -121,6 +123,7 @@ function handleCardClick(opt: StageOption) {
     } else if (stage.value === 'participle') {
       // Completed all 4 forms for this verb!
       if (targetVerb.value) {
+        recordSuccess(targetVerb.value)
         completedVerbBases.value.push(targetVerb.value.base)
         matchedGroupCount.value++
       }
@@ -140,6 +143,9 @@ function handleCardClick(opt: StageOption) {
     }
   } else {
     // Wrong card picked
+    if (targetVerb.value) {
+      recordMistake(targetVerb.value)
+    }
     shakeError.value = true
     feedback.value = `Incorrecto. Esa carta no corresponde al verbo actual.`
     feedbackType.value = 'error'
