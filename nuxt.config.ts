@@ -1,7 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
-  ssr: true, // SPA mode: instant interactivity, zero SSR hydration freeze
+  ssr: true,
   spaLoadingTemplate: 'spa-loading-template.html',
   devtools: { enabled: false },
   devServer: {
@@ -22,6 +22,10 @@ export default defineNuxtConfig({
     }
   },
   nitro: {
-    preset: 'cloudflare-pages'
+    preset: 'cloudflare_module',
+    cloudflare: {
+      deployConfig: true,
+      nodeCompat: true,
+    },
   }
 })
