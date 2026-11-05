@@ -4,6 +4,10 @@ import GameSetup from '~/components/GameSetup.vue'
 import MainMenu from '~/components/MainMenu.vue'
 import StatsPanel from '~/components/StatsPanel.vue'
 import VerbLibrary from '~/components/VerbLibrary.vue'
+import SynonymsPractice from '~/components/SynonymsPractice.vue'
+import AntonymsPractice from '~/components/AntonymsPractice.vue'
+import CognatesPractice from '~/components/CognatesPractice.vue'
+import FalseCognatesPractice from '~/components/FalseCognatesPractice.vue'
 import { useVerbGame } from '~/composables/useVerbGame'
 import type { GameMode, Verb } from '~/types/verb'
 
@@ -12,7 +16,7 @@ const FillMissingTense = defineAsyncComponent(() => import('~/components/FillMis
 const CardMatching = defineAsyncComponent(() => import('~/components/CardMatching.vue'))
 const GameResults = defineAsyncComponent(() => import('~/components/GameResults.vue'))
 
-type Section = 'menu' | 'practice' | 'stats' | 'verbs'
+type Section = 'menu' | 'practice' | 'stats' | 'verbs' | 'synonyms' | 'antonyms' | 'cognates' | 'false-cognates'
 
 const { mode, isFinished, selectedVerbs, resetGame, setupCustomVerbsGame } = useVerbGame()
 
@@ -21,6 +25,10 @@ const section = ref<Section>('menu')
 const navLinks: { id: Section; label: string; short: string }[] = [
   { id: 'menu', label: 'Menú', short: 'Menú' },
   { id: 'practice', label: 'Practicar', short: 'Practicar' },
+  { id: 'synonyms', label: 'Sinónimos', short: 'Sinónimos' },
+  { id: 'antonyms', label: 'Antónimos', short: 'Antónimos' },
+  { id: 'cognates', label: 'Cognados', short: 'Cognados' },
+  { id: 'false-cognates', label: 'Falsos Cognados', short: 'Falsos' },
   { id: 'stats', label: 'Estadísticas', short: 'Stats' },
   { id: 'verbs', label: 'Verbos', short: 'Verbos' },
 ]
@@ -103,6 +111,10 @@ watch(
       <template v-if="!isSessionActive">
         <MainMenu v-if="section === 'menu'" @navigate="goToSection" />
         <GameSetup v-else-if="section === 'practice'" />
+        <SynonymsPractice v-else-if="section === 'synonyms'" />
+        <AntonymsPractice v-else-if="section === 'antonyms'" />
+        <CognatesPractice v-else-if="section === 'cognates'" />
+        <FalseCognatesPractice v-else-if="section === 'false-cognates'" />
         <StatsPanel v-else-if="section === 'stats'" @practice="startCustomPractice" />
         <VerbLibrary v-else-if="section === 'verbs'" @practice="startCustomPractice" />
       </template>

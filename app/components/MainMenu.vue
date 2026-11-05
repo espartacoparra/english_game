@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { verbs } from '~/data/verbs'
 import { useStats } from '~/composables/useStats'
 
-type Section = 'practice' | 'stats' | 'verbs'
+type Section = 'practice' | 'stats' | 'verbs' | 'synonyms' | 'antonyms' | 'cognates' | 'false-cognates'
 
 const emit = defineEmits<{
   (e: 'navigate', section: Section): void
@@ -24,10 +24,42 @@ const sectionCards = computed<SectionCard[]>(() => [
   {
     id: 'practice',
     icon: '✍️',
-    title: 'Practicar',
+    title: 'Practicar Verbos',
     description: 'Elige modo, tipo y nivel, y empieza una sesión.',
     metric: `${verbs.length} verbos disponibles · ${problemVerbs.value.length} con fallos para repasar`,
     action: 'Comenzar',
+  },
+  {
+    id: 'synonyms',
+    icon: '🔀',
+    title: 'Sinónimos',
+    description: 'Practica encontrando sinónimos de palabras en inglés.',
+    metric: 'Amplía tu vocabulario',
+    action: 'Practicar',
+  },
+  {
+    id: 'antonyms',
+    icon: '⚖️',
+    title: 'Antónimos',
+    description: 'Encuentra palabras con significado opuesto.',
+    metric: 'Mejora tu comprensión',
+    action: 'Practicar',
+  },
+  {
+    id: 'cognates',
+    icon: '🤝',
+    title: 'Cognados',
+    description: 'Palabras similares entre español e inglés con mismo significado.',
+    metric: 'Aprovecha tu español',
+    action: 'Practicar',
+  },
+  {
+    id: 'false-cognates',
+    icon: '⚠️',
+    title: 'Falsos Cognados',
+    description: 'Cuidado con las trampas: palabras parecidas con distinto significado.',
+    metric: 'Evita errores comunes',
+    action: 'Practicar',
   },
   {
     id: 'stats',
@@ -222,7 +254,7 @@ const sectionCards = computed<SectionCard[]>(() => [
 /* Section cards */
 .section-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.25rem;
 }
 
