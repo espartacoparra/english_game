@@ -25,3 +25,6 @@ logs
 
 # sst
 .sst
+
+# Wrangler generated deploy config
+.wrangler

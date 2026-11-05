@@ -22,10 +22,17 @@ export default defineNuxtConfig({
     }
   },
   nitro: {
+    // Cloudflare Workers preset (same setup as the portfolio project).
+    // `deployConfig: true` makes Nitro generate `.output/server/wrangler.json`
+    // with the correct `main`, `assets` binding and `nodejs_compat` flag, so
+    // `npx wrangler deploy` works without a hand-written Wrangler config.
     preset: 'cloudflare_module',
     cloudflare: {
       deployConfig: true,
       nodeCompat: true,
+      wrangler: {
+        name: 'english-game',
+      },
     },
   }
 })
