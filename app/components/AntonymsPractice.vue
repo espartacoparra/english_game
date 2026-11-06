@@ -18,6 +18,21 @@ const words: AntonymWord[] = [
   { word: 'strong', antonyms: ['weak', 'feeble', 'frail', 'fragile'], hint: 'fuerte' },
   { word: 'clean', antonyms: ['dirty', 'filthy', 'grimy', 'unclean'], hint: 'limpio' },
   { word: 'easy', antonyms: ['hard', 'difficult', 'tough', 'challenging'], hint: 'fácil' },
+  { word: 'cold', antonyms: ['hot', 'warm', 'heated', 'boiling'], hint: 'frío' },
+  { word: 'early', antonyms: ['late', 'delayed', 'tardy'], hint: 'temprano' },
+  { word: 'late', antonyms: ['early', 'punctual', 'prompt'], hint: 'tarde' },
+  { word: 'high', antonyms: ['low', 'short', 'lowered'], hint: 'alto' },
+  { word: 'low', antonyms: ['high', 'tall', 'elevated'], hint: 'bajo' },
+  { word: 'long', antonyms: ['short', 'brief', 'compressed'], hint: 'largo' },
+  { word: 'full', antonyms: ['empty', 'vacant', 'hollow'], hint: 'lleno' },
+  { word: 'empty', antonyms: ['full', 'filled', 'occupied'], hint: 'vacío' },
+  { word: 'wide', antonyms: ['narrow', 'tight', 'cramped'], hint: 'ancho' },
+  { word: 'narrow', antonyms: ['wide', 'broad', 'spacious'], hint: 'estrecho' },
+  { word: 'near', antonyms: ['far', 'distant', 'remote'], hint: 'cerca' },
+  { word: 'far', antonyms: ['near', 'close', 'nearby'], hint: 'lejos' },
+  { word: 'true', antonyms: ['false', 'untrue', 'fake'], hint: 'verdadero' },
+  { word: 'safe', antonyms: ['dangerous', 'risky', 'unsafe'], hint: 'seguro' },
+  { word: 'wet', antonyms: ['dry', 'arid', 'parched'], hint: 'mojado' },
 ]
 
 const currentIndex = ref(0)

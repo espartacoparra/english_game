@@ -143,6 +143,153 @@ const falseCognates: FalseCognate[] = [
     falseMeaning: 'relativos (relatives in grammar)',
     example: '"All my relatives came" = "Vinieron todos mis parientes"'
   },
+  { 
+    english: 'carpet', 
+    looksLike: 'carpeta', 
+    realMeaning: 'alfombra',
+    falseMeaning: 'carpeta (folder)',
+    example: '"The carpet is dirty" = "La alfombra está sucia"'
+  },
+  { 
+    english: 'brave', 
+    looksLike: 'bravo', 
+    realMeaning: 'valiente',
+    falseMeaning: 'bravo (angry/fierce)',
+    example: '"He is a brave soldier" = "Él es un soldado valiente"'
+  },
+  { 
+    english: 'attend', 
+    looksLike: 'atender', 
+    realMeaning: 'asistir (a un evento)',
+    falseMeaning: 'atender (to serve/assist)',
+    example: '"I will attend the meeting" = "Asistiré a la reunión"'
+  },
+  { 
+    english: 'support', 
+    looksLike: 'soportar', 
+    realMeaning: 'apoyar',
+    falseMeaning: 'soportar (to tolerate/bear)',
+    example: '"I support your idea" = "Apoyo tu idea"'
+  },
+  { 
+    english: 'assist', 
+    looksLike: 'asistir', 
+    realMeaning: 'ayudar',
+    falseMeaning: 'asistir (to attend)',
+    example: '"Can you assist me?" = "¿Puedes ayudarme?"'
+  },
+  { 
+    english: 'rope', 
+    looksLike: 'ropa', 
+    realMeaning: 'cuerda / soga',
+    falseMeaning: 'ropa (clothes)',
+    example: '"Tie the rope to the tree" = "Ata la cuerda al árbol"'
+  },
+  { 
+    english: 'pie', 
+    looksLike: 'pie', 
+    realMeaning: 'pastel / tarta',
+    falseMeaning: 'pie (foot)',
+    example: '"I baked an apple pie" = "Hice un pastel de manzana"'
+  },
+  { 
+    english: 'red', 
+    looksLike: 'red', 
+    realMeaning: 'rojo',
+    falseMeaning: 'red (network)',
+    example: '"She wore a red dress" = "Ella llevaba un vestido rojo"'
+  },
+  { 
+    english: 'arena', 
+    looksLike: 'arena', 
+    realMeaning: 'estadio / recinto',
+    falseMeaning: 'arena (sand)',
+    example: '"The concert is in the arena" = "El concierto es en el estadio"'
+  },
+  { 
+    english: 'sane', 
+    looksLike: 'sano', 
+    realMeaning: 'cuerdo / en su sano juicio',
+    falseMeaning: 'sano (healthy)',
+    example: '"That was a sane decision" = "Esa fue una decisión cuerda"'
+  },
+  { 
+    english: 'ultimately', 
+    looksLike: 'últimamente', 
+    realMeaning: 'en última instancia / finalmente',
+    falseMeaning: 'últimamente (lately)',
+    example: '"Ultimately, it doesn\'t matter" = "En última instancia, no importa"'
+  },
+  { 
+    english: 'eventually', 
+    looksLike: 'eventualmente', 
+    realMeaning: 'finalmente / con el tiempo',
+    falseMeaning: 'eventualmente (possibly/occasionally)',
+    example: '"Eventually, she said yes" = "Con el tiempo, ella dijo que sí"'
+  },
+  { 
+    english: 'advice', 
+    looksLike: 'aviso', 
+    realMeaning: 'consejo',
+    falseMeaning: 'aviso (notice/warning)',
+    example: '"Thanks for your advice" = "Gracias por tu consejo"'
+  },
+  { 
+    english: 'notice', 
+    looksLike: 'noticia', 
+    realMeaning: 'aviso / letrero / notar',
+    falseMeaning: 'noticia (news)',
+    example: '"I didn\'t notice the sign" = "No me di cuenta del letrero"'
+  },
+  { 
+    english: 'argument', 
+    looksLike: 'argumento', 
+    realMeaning: 'discusión / pelea',
+    falseMeaning: 'argumento (plot/reasoning)',
+    example: '"They had an argument" = "Tuvieron una discusión"'
+  },
+  { 
+    english: 'gang', 
+    looksLike: 'ganga', 
+    realMeaning: 'pandilla / banda',
+    falseMeaning: 'ganga (bargain)',
+    example: '"A gang robbed the store" = "Una pandilla robó la tienda"'
+  },
+  { 
+    english: 'large', 
+    looksLike: 'largo', 
+    realMeaning: 'grande',
+    falseMeaning: 'largo (long)',
+    example: '"They live in a large house" = "Viven en una casa grande"'
+  },
+  { 
+    english: 'mayor', 
+    looksLike: 'mayor', 
+    realMeaning: 'alcalde',
+    falseMeaning: 'mayor (older)',
+    example: '"The mayor gave a speech" = "El alcalde dio un discurso"'
+  },
+  { 
+    english: 'once', 
+    looksLike: 'once', 
+    realMeaning: 'una vez',
+    falseMeaning: 'once (eleven)',
+    example: '"I only went once" = "Solo fui una vez"'
+  },
+  { 
+    english: 'pretend', 
+    looksLike: 'pretender', 
+    realMeaning: 'fingir',
+    falseMeaning: 'pretender (to intend/aspire)',
+    example: '"Don\'t pretend to be asleep" = "No finjas estar dormido"'
+  },
+  { 
+    english: 'record', 
+    looksLike: 'recordar', 
+    realMeaning: 'grabar / récord',
+    falseMeaning: 'recordar (to remember)',
+    example: '"They record the song" = "Ellos graban la canción"'
+  },
 ]
 
 const currentIndex = ref(0)

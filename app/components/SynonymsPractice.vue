@@ -18,6 +18,21 @@ const words: SynonymWord[] = [
   { word: 'bad', synonyms: ['evil', 'awful', 'terrible', 'horrible', 'poor'], hint: 'malo' },
   { word: 'smart', synonyms: ['intelligent', 'clever', 'bright', 'wise', 'brilliant'], hint: 'inteligente' },
   { word: 'old', synonyms: ['ancient', 'aged', 'elderly', 'vintage', 'antique'], hint: 'viejo' },
+  { word: 'strong', synonyms: ['powerful', 'sturdy', 'robust', 'tough', 'muscular'], hint: 'fuerte' },
+  { word: 'weak', synonyms: ['frail', 'feeble', 'fragile', 'delicate'], hint: 'débil' },
+  { word: 'beautiful', synonyms: ['pretty', 'lovely', 'gorgeous', 'stunning', 'attractive'], hint: 'hermoso' },
+  { word: 'ugly', synonyms: ['hideous', 'unattractive', 'unsightly', 'homely'], hint: 'feo' },
+  { word: 'tired', synonyms: ['exhausted', 'weary', 'fatigued', 'drained'], hint: 'cansado' },
+  { word: 'angry', synonyms: ['furious', 'mad', 'annoyed', 'irritated', 'enraged'], hint: 'enojado' },
+  { word: 'afraid', synonyms: ['scared', 'frightened', 'terrified', 'fearful'], hint: 'asustado' },
+  { word: 'brave', synonyms: ['courageous', 'bold', 'fearless', 'valiant'], hint: 'valiente' },
+  { word: 'quiet', synonyms: ['silent', 'still', 'hushed', 'peaceful'], hint: 'tranquilo/silencioso' },
+  { word: 'loud', synonyms: ['noisy', 'deafening', 'booming', 'blaring'], hint: 'ruidoso' },
+  { word: 'begin', synonyms: ['start', 'commence', 'initiate', 'launch'], hint: 'empezar' },
+  { word: 'end', synonyms: ['finish', 'conclude', 'terminate', 'complete'], hint: 'terminar' },
+  { word: 'help', synonyms: ['assist', 'support', 'aid', 'back'], hint: 'ayudar' },
+  { word: 'buy', synonyms: ['purchase', 'acquire', 'obtain'], hint: 'comprar' },
+  { word: 'choose', synonyms: ['select', 'pick', 'opt', 'elect'], hint: 'elegir' },
 ]
 
 const currentIndex = ref(0)
