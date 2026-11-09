@@ -12,7 +12,14 @@ export interface Verb {
   level: VerbLevel
 }
 
-export type GameMode = 'write-all' | 'fill-missing' | 'card-matching'
+export type GameMode =
+  | 'write-all'
+  | 'fill-missing'
+  | 'card-matching'
+  | 'synonyms'
+  | 'antonyms'
+  | 'cognates'
+  | 'false-cognates'
 
 export interface GameResult {
   verb: Verb

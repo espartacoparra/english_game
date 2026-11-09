@@ -1,74 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { COGNATE_ITEMS } from '~/data/practice'
 
-interface Cognate {
-  english: string
-  spanish: string
-  category: string
-}
-
-const cognates: Cognate[] = [
-  { english: 'animal', spanish: 'animal', category: 'General' },
-  { english: 'hospital', spanish: 'hospital', category: 'Medical' },
-  { english: 'banana', spanish: 'banana', category: 'Food' },
-  { english: 'chocolate', spanish: 'chocolate', category: 'Food' },
-  { english: 'radio', spanish: 'radio', category: 'Technology' },
-  { english: 'musical', spanish: 'musical', category: 'Art' },
-  { english: 'natural', spanish: 'natural', category: 'Science' },
-  { english: 'electric', spanish: 'eléctrico', category: 'Science' },
-  { english: 'capital', spanish: 'capital', category: 'General' },
-  { english: 'important', spanish: 'importante', category: 'Adjectives' },
-  { english: 'possible', spanish: 'posible', category: 'Adjectives' },
-  { english: 'difficult', spanish: 'difícil', category: 'Adjectives' },
-  { english: 'television', spanish: 'televisión', category: 'Technology' },
-  { english: 'university', spanish: 'universidad', category: 'Education' },
-  { english: 'revolution', spanish: 'revolución', category: 'History' },
-  { english: 'family', spanish: 'familia', category: 'General' },
-  { english: 'color', spanish: 'color', category: 'General' },
-  { english: 'class', spanish: 'clase', category: 'Education' },
-  { english: 'doctor', spanish: 'doctor/médico', category: 'Medical' },
-  { english: 'motor', spanish: 'motor', category: 'Technology' },
-  { english: 'professor', spanish: 'profesor', category: 'Education' },
-  { english: 'restaurant', spanish: 'restaurante', category: 'Food' },
-  { english: 'music', spanish: 'música', category: 'Art' },
-  { english: 'victory', spanish: 'victoria', category: 'General' },
-  { english: 'emotion', spanish: 'emoción', category: 'Psychology' },
-  { english: 'conversation', spanish: 'conversación', category: 'General' },
-  { english: 'intelligent', spanish: 'inteligente', category: 'Adjectives' },
-  { english: 'incredible', spanish: 'increíble', category: 'Adjectives' },
-  { english: 'moment', spanish: 'momento', category: 'General' },
-  { english: 'problem', spanish: 'problema', category: 'General' },
-  { english: 'accident', spanish: 'accidente', category: 'General' },
-  { english: 'action', spanish: 'acción', category: 'General' },
-  { english: 'attention', spanish: 'atención', category: 'General' },
-  { english: 'biology', spanish: 'biología', category: 'Science' },
-  { english: 'camera', spanish: 'cámara', category: 'Technology' },
-  { english: 'ceremony', spanish: 'ceremonia', category: 'Culture' },
-  { english: 'circle', spanish: 'círculo', category: 'Math' },
-  { english: 'civil', spanish: 'civil', category: 'Society' },
-  { english: 'complete', spanish: 'completo', category: 'Adjectives' },
-  { english: 'confusion', spanish: 'confusión', category: 'Psychology' },
-  { english: 'construction', spanish: 'construcción', category: 'Construction' },
-  { english: 'culture', spanish: 'cultura', category: 'Culture' },
-  { english: 'decoration', spanish: 'decoración', category: 'Art' },
-  { english: 'direction', spanish: 'dirección', category: 'General' },
-  { english: 'distance', spanish: 'distancia', category: 'Math' },
-  { english: 'education', spanish: 'educación', category: 'Education' },
-  { english: 'energy', spanish: 'energía', category: 'Science' },
-  { english: 'example', spanish: 'ejemplo', category: 'General' },
-  { english: 'experiment', spanish: 'experimento', category: 'Science' },
-  { english: 'expression', spanish: 'expresión', category: 'Language' },
-  { english: 'famous', spanish: 'famoso', category: 'Adjectives' },
-  { english: 'future', spanish: 'futuro', category: 'Time' },
-  { english: 'geography', spanish: 'geografía', category: 'Science' },
-  { english: 'grammar', spanish: 'gramática', category: 'Language' },
-  { english: 'history', spanish: 'historia', category: 'History' },
-  { english: 'idea', spanish: 'idea', category: 'General' },
-  { english: 'imagination', spanish: 'imaginación', category: 'Psychology' },
-  { english: 'information', spanish: 'información', category: 'Technology' },
-  { english: 'insect', spanish: 'insecto', category: 'Animals' },
-  { english: 'international', spanish: 'internacional', category: 'Adjectives' },
-]
+const cognates = COGNATE_ITEMS
 
 const currentIndex = ref(0)
 const revealed = ref(false)

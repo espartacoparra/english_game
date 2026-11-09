@@ -1,84 +1,65 @@
-import type { GameMode, TenseKey, Verb, VerbLevel, VerbType } from '../types/verb'
+import type { TenseKey } from '../types/verb'
+import type {
+  BoardCard,
+  BoardRoundPrompt,
+  BoardStep,
+  ChoiceOption,
+  ChoiceRoundPrompt,
+  ListRoundPrompt,
+  PublicRoom,
+  RoomClientMessage,
+  RoomMode,
+  RoomPhase,
+  RoomPlayerInfo,
+  RoomServerEvent,
+  RoundOutcome,
+  RoundProgressEntry,
+  RoundPrompt,
+  RoundReply,
+  StartOptions,
+  TenseRoundPrompt,
+} from './room-protocol'
 
 /**
  * Browser side of the room protocol.
  *
- * This is the mirror of the authoritative machine in `workers/room/src/machine.ts`.
+ * The wire contract itself lives in `app/core/room-protocol.ts`, shared with the
+ * authoritative machine in `workers/room/src/machine.ts`. This module re-exports
+ * it and adds the browser-only pieces: room codes, client messages, the parser
+ * and the transport.
+ *
  * Everything here is pure: no Vue, no DOM. The only host dependency is the
  * WebSocket constructor, which stays isolated inside `createWebSocketTransport`.
  */
 
+export { MAX_PLAYERS, MIN_PLAYERS } from './room-protocol'
+
+export type {
+  BoardCard,
+  BoardRoundPrompt,
+  BoardStep,
+  ChoiceOption,
+  ChoiceRoundPrompt,
+  FinishedPayload,
+  ListRoundPrompt,
+  PublicRoom,
+  RoomClientMessage,
+  RoomMode,
+  RoomPhase,
+  RoomPlayerInfo,
+  RoomServerEvent,
+  RoundFamily,
+  RoundOutcome,
+  RoundProgressEntry,
+  RoundPrompt,
+  RoundReply,
+  StartOptions,
+  TenseRoundPrompt,
+} from './room-protocol'
+
 export const CODE_PATTERN = /^[A-Z0-9]{6}$/
 export const CODE_LENGTH = 6
 const CODE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-
-export type RoomPhase = 'lobby' | 'playing' | 'finished'
-
-export interface RoomPlayerInfo {
-  id: string
-  name: string
-}
-
-/** What a client may see of the current verb. Never the answers. */
-export interface RoundHint {
-  spanish: string
-  type: VerbType
-  level: VerbLevel
-}
-
-export interface RoundAnswer {
-  playerId: string
-  correct: boolean
-  answers: Record<TenseKey, string>
-  at: number
-}
-
-export interface PublicRoom {
-  code: string
-  phase: RoomPhase
-  mode: GameMode
-  players: RoomPlayerInfo[]
-  scores: Record<string, number>
-  roundIndex: number | null
-  totalRounds: number | null
-  hint: RoundHint | null
-}
-
-export interface RoundProgressEntry {
-  playerId: string
-  correct: boolean
-}
-
-export interface FinishedPayload {
-  scores: Record<string, number>
-  players: RoomPlayerInfo[]
-}
-
-export type RoomServerEvent =
-  | { t: 'state'; room: PublicRoom }
-  | { t: 'round'; index: number; total: number; hint: RoundHint }
-  | { t: 'progress'; index: number; answered: RoundProgressEntry[] }
-  | {
-      t: 'result'
-      index: number
-      winnerId: string | null
-      verb: Verb
-      answers: RoundAnswer[]
-    }
-  | ({ t: 'finished' } & FinishedPayload)
-  | { t: 'error'; code: string; message: string }
-
-export type StartOptions = {
-  mode?: GameMode
-  count?: number | 'all'
-  type?: VerbType | 'all'
-  level?: VerbLevel | 'all'
-}
-
-export type RoomClientMessage =
-  | { t: 'join'; playerId: string; name: string }
-  | ({ t: 'start' } & StartOptions)
-  | { t: 'answer'; index: number; answers: Record<TenseKey, string> }
 
 /** Anything that can hand back random bytes. Injectable so codes are testable. */
 export type RandomBytes = (target: Uint8Array) => Uint8Array
@@ -139,17 +120,51 @@ export function startMessage(options: StartOptions = {}): RoomClientMessage {
   return { t: 'start', ...options }
 }
 
-export function answerMessage(
-  index: number,
-  answers: Record<TenseKey, string>
-): RoomClientMessage {
-  return { t: 'answer', index, answers: { ...answers } }
+/** Copy of a reply, so a later mutation in the caller cannot rewrite history. */
+function cloneReply(reply: RoundReply): RoundReply {
+  switch (reply.kind) {
+    case 'tenses':
+      return { kind: 'tenses', answers: { ...reply.answers } }
+    case 'choice':
+      return { kind: 'choice', optionId: reply.optionId }
+    case 'list':
+      return { kind: 'list', items: [...reply.items] }
+    case 'board':
+      return { kind: 'board', cardId: reply.cardId }
+  }
+}
+
+/**
+ * Builds the `answer` frame, or `null` when the reply does not match the
+ * contract. The null case is a client bug, never user input, so callers can
+ * surface it without risking an invalid frame on the wire.
+ */
+export function answerMessage(index: number, reply: RoundReply): RoomClientMessage | null {
+  if (!isNumber(index) || !isRoundReply(reply)) return null
+  return { t: 'answer', index, reply: cloneReply(reply) }
 }
 
 /** `ws://host/ws?code=ABC123`, tolerating a trailing slash in the base URL. */
 export function roomSocketUrl(baseUrl: string, code: string): string {
   return `${baseUrl.trim().replace(/\/+$/, '')}/ws?code=${normalizeRoomCode(code)}`
 }
+
+/* -------------------------------------------------------------- validation */
+
+const ROOM_PHASES: readonly RoomPhase[] = ['lobby', 'playing', 'finished']
+const ROOM_MODES: readonly RoomMode[] = [
+  'write-all',
+  'fill-missing',
+  'card-matching',
+  'synonyms',
+  'antonyms',
+  'cognates',
+  'false-cognates',
+]
+const TENSE_KEYS: readonly TenseKey[] = ['base', 'past', 'participle']
+const BOARD_STEPS: readonly BoardStep[] = ['spanish', 'base', 'past', 'participle']
+const VERB_TYPES = ['regular', 'irregular'] as const
+const VERB_LEVELS = ['A1', 'A2', 'B1', 'B2'] as const
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -159,12 +174,16 @@ function isString(value: unknown): value is string {
   return typeof value === 'string'
 }
 
+function isNonEmptyString(value: unknown): value is string {
+  return isString(value) && value.length > 0
+}
+
 function isNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
 }
 
-function isScoreMap(value: unknown): value is Record<string, number> {
-  return isRecord(value) && Object.values(value).every(isNumber)
+function isMember<T extends string>(allowed: readonly T[], value: unknown): value is T {
+  return isString(value) && (allowed as readonly string[]).includes(value)
 }
 
 function isPlayerList(value: unknown): value is RoomPlayerInfo[] {
@@ -174,56 +193,129 @@ function isPlayerList(value: unknown): value is RoomPlayerInfo[] {
   )
 }
 
-function isHint(value: unknown): value is RoundHint {
+function isScoreMap(value: unknown): value is Record<string, number> {
+  return isRecord(value) && Object.values(value).every(isNumber)
+}
+
+function isTenseAnswers(value: unknown): value is Partial<Record<TenseKey, string>> {
   return (
     isRecord(value) &&
-    isString(value.spanish) &&
-    isString(value.type) &&
-    isString(value.level)
+    Object.entries(value).every(([key, entry]) => isMember(TENSE_KEYS, key) && isString(entry))
   )
 }
 
-function isAnswerMap(value: unknown): value is Record<TenseKey, string> {
-  return isRecord(value) && Object.values(value).every(isString)
-}
-
-function isAnswerList(value: unknown): value is RoundAnswer[] {
+function isChoiceOptions(value: unknown): value is ChoiceOption[] {
   return (
     Array.isArray(value) &&
-    value.every(
-      (entry) =>
-        isRecord(entry) &&
-        isString(entry.playerId) &&
-        typeof entry.correct === 'boolean' &&
-        isAnswerMap(entry.answers) &&
-        isNumber(entry.at)
-    )
+    value.every((entry) => isRecord(entry) && isString(entry.id) && isString(entry.label))
   )
 }
 
-function isVerb(value: unknown): value is Verb {
+function isBoardCards(value: unknown): value is BoardCard[] {
   return (
-    isRecord(value) &&
-    isString(value.spanish) &&
-    isString(value.base) &&
-    isString(value.past) &&
-    isString(value.participle) &&
-    isString(value.type) &&
-    isString(value.level)
+    Array.isArray(value) &&
+    value.every((entry) => isRecord(entry) && isString(entry.id) && isString(entry.label))
   )
 }
+
+/* ---------------------------------------------------------------- prompts */
+
+function isTensePrompt(value: unknown): value is TenseRoundPrompt {
+  return (
+    isRecord(value) &&
+    value.kind === 'tenses' &&
+    isString(value.spanish) &&
+    isMember(VERB_TYPES, value.type) &&
+    isMember(VERB_LEVELS, value.level) &&
+    (value.givenTense === null || isMember(TENSE_KEYS, value.givenTense)) &&
+    (value.givenForm === null || isString(value.givenForm))
+  )
+}
+
+function isChoicePrompt(value: unknown): value is ChoiceRoundPrompt {
+  return (
+    isRecord(value) &&
+    value.kind === 'choice' &&
+    isString(value.item) &&
+    isString(value.question) &&
+    (value.hint === null || isString(value.hint)) &&
+    isChoiceOptions(value.options)
+  )
+}
+
+function isListPrompt(value: unknown): value is ListRoundPrompt {
+  return (
+    isRecord(value) &&
+    value.kind === 'list' &&
+    isString(value.word) &&
+    isString(value.hint) &&
+    isNumber(value.expectedCount)
+  )
+}
+
+function isBoardPrompt(value: unknown): value is BoardRoundPrompt {
+  return (
+    isRecord(value) &&
+    value.kind === 'board' &&
+    isBoardCards(value.cards) &&
+    isMember(BOARD_STEPS, value.needed) &&
+    isString(value.turnPlayerId) &&
+    isNumber(value.completedChains) &&
+    isNumber(value.totalChains) &&
+    isScoreMap(value.chainsBy)
+  )
+}
+
+/** Unknown prompt families are rejected, never coerced into a known one. */
+export function isRoundPrompt(value: unknown): value is RoundPrompt {
+  if (!isRecord(value)) return false
+  switch (value.kind) {
+    case 'tenses':
+      return isTensePrompt(value)
+    case 'choice':
+      return isChoicePrompt(value)
+    case 'list':
+      return isListPrompt(value)
+    case 'board':
+      return isBoardPrompt(value)
+    default:
+      return false
+  }
+}
+
+/* ---------------------------------------------------------------- replies */
+
+/** Unknown reply kinds are rejected, never coerced into a known one. */
+export function isRoundReply(value: unknown): value is RoundReply {
+  if (!isRecord(value)) return false
+  switch (value.kind) {
+    case 'tenses':
+      return isTenseAnswers(value.answers)
+    case 'choice':
+      return isNonEmptyString(value.optionId)
+    case 'list':
+      return Array.isArray(value.items) && value.items.every(isString)
+    case 'board':
+      return isNonEmptyString(value.cardId)
+    default:
+      return false
+  }
+}
+
+/* ----------------------------------------------------------------- events */
 
 function isPublicRoom(value: unknown): value is PublicRoom {
   return (
     isRecord(value) &&
     isString(value.code) &&
-    isString(value.phase) &&
-    isString(value.mode) &&
+    isMember(ROOM_PHASES, value.phase) &&
+    isMember(ROOM_MODES, value.mode) &&
+    (value.hostId === null || isString(value.hostId)) &&
     isPlayerList(value.players) &&
     isScoreMap(value.scores) &&
     (value.roundIndex === null || isNumber(value.roundIndex)) &&
     (value.totalRounds === null || isNumber(value.totalRounds)) &&
-    (value.hint === null || isHint(value.hint))
+    (value.prompt === null || isRoundPrompt(value.prompt))
   )
 }
 
@@ -231,7 +323,25 @@ function isProgressList(value: unknown): value is RoundProgressEntry[] {
   return (
     Array.isArray(value) &&
     value.every(
-      (entry) => isRecord(entry) && isString(entry.playerId) && typeof entry.correct === 'boolean'
+      (entry) =>
+        isRecord(entry) &&
+        isString(entry.playerId) &&
+        typeof entry.correct === 'boolean' &&
+        isNumber(entry.points)
+    )
+  )
+}
+
+function isOutcomeList(value: unknown): value is RoundOutcome[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (entry) =>
+        isRecord(entry) &&
+        isString(entry.playerId) &&
+        typeof entry.correct === 'boolean' &&
+        isNumber(entry.points) &&
+        (entry.detail === null || isString(entry.detail))
     )
   )
 }
@@ -243,8 +353,8 @@ function toEvent(value: unknown): RoomServerEvent | null {
     case 'state':
       return isPublicRoom(value.room) ? { t: 'state', room: value.room } : null
     case 'round':
-      return isNumber(value.index) && isNumber(value.total) && isHint(value.hint)
-        ? { t: 'round', index: value.index, total: value.total, hint: value.hint }
+      return isNumber(value.index) && isNumber(value.total) && isRoundPrompt(value.prompt)
+        ? { t: 'round', index: value.index, total: value.total, prompt: value.prompt }
         : null
     case 'progress':
       return isNumber(value.index) && isProgressList(value.answered)
@@ -253,14 +363,16 @@ function toEvent(value: unknown): RoomServerEvent | null {
     case 'result':
       return isNumber(value.index) &&
         (value.winnerId === null || isString(value.winnerId)) &&
-        isVerb(value.verb) &&
-        isAnswerList(value.answers)
+        isRoundPrompt(value.prompt) &&
+        isOutcomeList(value.outcomes) &&
+        (value.solution === null || isString(value.solution))
         ? {
             t: 'result',
             index: value.index,
             winnerId: value.winnerId,
-            verb: value.verb,
-            answers: value.answers,
+            prompt: value.prompt,
+            outcomes: value.outcomes,
+            solution: value.solution,
           }
         : null
     case 'finished':
@@ -281,7 +393,8 @@ function toEvent(value: unknown): RoomServerEvent | null {
  *
  * The server always sends a JSON array of events and may eventually add new
  * event types, so unknown or malformed entries are dropped instead of throwing.
- * A message that is not valid JSON at all yields no events.
+ * A message that is not valid JSON at all yields no events. A guard that throws
+ * on hostile input (a proxy, a getter) drops only its own entry.
  */
 export function parseRoomEvents(payload: unknown): RoomServerEvent[] {
   let raw: unknown = payload
@@ -298,8 +411,12 @@ export function parseRoomEvents(payload: unknown): RoomServerEvent[] {
 
   const events: RoomServerEvent[] = []
   for (const entry of raw) {
-    const event = toEvent(entry)
-    if (event) events.push(event)
+    try {
+      const event = toEvent(entry)
+      if (event) events.push(event)
+    } catch {
+      // A hostile object must not take the whole frame down.
+    }
   }
   return events
 }

@@ -1,39 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { SYNONYM_ITEMS } from '~/data/practice'
 
-interface SynonymWord {
-  word: string
-  synonyms: string[]
-  hint?: string
-}
-
-const words: SynonymWord[] = [
-  { word: 'big', synonyms: ['large', 'huge', 'enormous', 'giant', 'massive'], hint: 'grande' },
-  { word: 'small', synonyms: ['little', 'tiny', 'mini', 'petite', 'compact'], hint: 'pequeño' },
-  { word: 'happy', synonyms: ['glad', 'joyful', 'cheerful', 'delighted', 'pleased'], hint: 'feliz' },
-  { word: 'sad', synonyms: ['unhappy', 'sorrowful', 'depressed', 'gloomy', 'melancholy'], hint: 'triste' },
-  { word: 'fast', synonyms: ['quick', 'rapid', 'swift', 'speedy', 'hasty'], hint: 'rápido' },
-  { word: 'slow', synonyms: ['sluggish', 'gradual', 'leisurely', 'unhurried'], hint: 'lento' },
-  { word: 'good', synonyms: ['great', 'fine', 'excellent', 'wonderful', 'superb'], hint: 'bueno' },
-  { word: 'bad', synonyms: ['evil', 'awful', 'terrible', 'horrible', 'poor'], hint: 'malo' },
-  { word: 'smart', synonyms: ['intelligent', 'clever', 'bright', 'wise', 'brilliant'], hint: 'inteligente' },
-  { word: 'old', synonyms: ['ancient', 'aged', 'elderly', 'vintage', 'antique'], hint: 'viejo' },
-  { word: 'strong', synonyms: ['powerful', 'sturdy', 'robust', 'tough', 'muscular'], hint: 'fuerte' },
-  { word: 'weak', synonyms: ['frail', 'feeble', 'fragile', 'delicate'], hint: 'débil' },
-  { word: 'beautiful', synonyms: ['pretty', 'lovely', 'gorgeous', 'stunning', 'attractive'], hint: 'hermoso' },
-  { word: 'ugly', synonyms: ['hideous', 'unattractive', 'unsightly', 'homely'], hint: 'feo' },
-  { word: 'tired', synonyms: ['exhausted', 'weary', 'fatigued', 'drained'], hint: 'cansado' },
-  { word: 'angry', synonyms: ['furious', 'mad', 'annoyed', 'irritated', 'enraged'], hint: 'enojado' },
-  { word: 'afraid', synonyms: ['scared', 'frightened', 'terrified', 'fearful'], hint: 'asustado' },
-  { word: 'brave', synonyms: ['courageous', 'bold', 'fearless', 'valiant'], hint: 'valiente' },
-  { word: 'quiet', synonyms: ['silent', 'still', 'hushed', 'peaceful'], hint: 'tranquilo/silencioso' },
-  { word: 'loud', synonyms: ['noisy', 'deafening', 'booming', 'blaring'], hint: 'ruidoso' },
-  { word: 'begin', synonyms: ['start', 'commence', 'initiate', 'launch'], hint: 'empezar' },
-  { word: 'end', synonyms: ['finish', 'conclude', 'terminate', 'complete'], hint: 'terminar' },
-  { word: 'help', synonyms: ['assist', 'support', 'aid', 'back'], hint: 'ayudar' },
-  { word: 'buy', synonyms: ['purchase', 'acquire', 'obtain'], hint: 'comprar' },
-  { word: 'choose', synonyms: ['select', 'pick', 'opt', 'elect'], hint: 'elegir' },
-]
+const words = SYNONYM_ITEMS
 
 const currentIndex = ref(0)
 const userInput = ref('')

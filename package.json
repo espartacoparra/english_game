@@ -9,6 +9,7 @@
     "postinstall": "nuxt prepare",
     "preview": "nuxt preview",
     "test": "vitest run",
+    "dev:room": "wrangler dev --config workers/room/wrangler.jsonc --port 8787",
     "smoke:room": "node scripts/room-smoke.mjs",
     "deploy": "nuxt build && wrangler deploy --config .output/server/wrangler.json",
     "deploy:room": "wrangler deploy --config workers/room/wrangler.jsonc"

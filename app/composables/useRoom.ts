@@ -1,5 +1,7 @@
 import { computed, markRaw } from 'vue'
 import {
+  MAX_PLAYERS,
+  MIN_PLAYERS,
   answerMessage,
   createWebSocketTransport,
   generatePlayerId,
@@ -15,11 +17,11 @@ import {
   type RoomPlayerInfo,
   type RoomServerEvent,
   type RoomTransport,
-  type RoundHint,
   type RoundProgressEntry,
+  type RoundPrompt,
+  type RoundReply,
   type StartOptions,
 } from '~/core/room-client'
-import type { TenseKey } from '~/types/verb'
 
 export type RoomStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error'
 
@@ -51,7 +53,7 @@ export function useRoom() {
   const status = useState<RoomStatus>('room:status', () => 'idle')
   const code = useState<string>('room:code', () => '')
   const room = useState<PublicRoom | null>('room:state', () => null)
-  const hint = useState<RoundHint | null>('room:hint', () => null)
+  const prompt = useState<RoundPrompt | null>('room:prompt', () => null)
   const roundIndex = useState<number | null>('room:roundIndex', () => null)
   const totalRounds = useState<number | null>('room:totalRounds', () => null)
   const progress = useState<RoundProgressEntry[]>('room:progress', () => [])
@@ -61,6 +63,11 @@ export function useRoom() {
   const playerId = useState<string>('room:playerId', () => '')
   const playerName = useState<string>('room:playerName', () => '')
   const joined = useState<boolean>('room:joined', () => false)
+  // Partial credit means a round can add more than the single point the old
+  // race awarded, so the mirror keeps track of what it already applied per
+  // round instead of guessing from a result.
+  const mirrorRound = useState<number | null>('room:mirrorRound', () => null)
+  const mirroredPoints = useState<Record<string, number>>('room:mirroredPoints', () => ({}))
   // The socket lives here so every caller shares one link. It is `markRaw`ed:
   // a reactive proxy around a WebSocket breaks its internal invariants.
   const connection = useState<RoomConnection>('room:connection', () => ({
@@ -174,6 +181,43 @@ export function useRoom() {
 
   // --- server events ------------------------------------------------------
 
+  /**
+   * Mirrors the points a round has already awarded.
+   *
+   * `progress` carries the running total per player, so the scoreboard moves
+   * as answers land — partial credit included — and the mirror stays additive
+   * instead of re-deriving a single point from the round result. A `state`
+   * event still overwrites the whole score map with the authoritative one, and
+   * the applied amounts are keyed by round so a repeated frame cannot double
+   * count.
+   */
+  function mirrorProgressPoints(index: number, entries: RoundProgressEntry[]): void {
+    if (mirrorRound.value !== index) {
+      mirrorRound.value = index
+      mirroredPoints.value = {}
+    }
+    const current = room.value
+    if (!current) return
+
+    const scores = { ...current.scores }
+    const applied = { ...mirroredPoints.value }
+    let changed = false
+
+    for (const entry of entries) {
+      // The server sends the player's running total for this round: apply the
+      // difference over what this mirror already counted.
+      const alreadyApplied = applied[entry.playerId] ?? 0
+      if (entry.points <= alreadyApplied) continue
+      scores[entry.playerId] = (scores[entry.playerId] ?? 0) + (entry.points - alreadyApplied)
+      applied[entry.playerId] = entry.points
+      changed = true
+    }
+
+    if (!changed) return
+    mirroredPoints.value = applied
+    room.value = { ...current, scores }
+  }
+
   function applyEvents(events: RoomServerEvent[]): void {
     if (events.length === 0) return
 
@@ -184,7 +228,7 @@ export function useRoom() {
       switch (event.t) {
         case 'state': {
           room.value = event.room
-          hint.value = event.room.hint
+          prompt.value = event.room.prompt
           roundIndex.value = event.room.roundIndex
           totalRounds.value = event.room.totalRounds
           if (event.room.phase === 'lobby') {
@@ -198,7 +242,7 @@ export function useRoom() {
           break
         }
         case 'round': {
-          hint.value = event.hint
+          prompt.value = event.prompt
           roundIndex.value = event.index
           totalRounds.value = event.total
           progress.value = []
@@ -207,18 +251,13 @@ export function useRoom() {
         case 'progress': {
           progress.value = event.answered
           roundIndex.value = event.index
+          mirrorProgressPoints(event.index, event.answered)
           break
         }
         case 'result': {
+          // Scores are already mirrored from `progress`: the result only holds
+          // the round's accounting, so it feeds the panel, never the scoreboard.
           result.value = event
-          // The server is authoritative for the point, but its `scores` only
-          // travel in `state`/`finished` events, so mirror the single point here
-          // to keep the live scoreboard honest.
-          if (event.winnerId && room.value) {
-            const scores = { ...room.value.scores }
-            scores[event.winnerId] = (scores[event.winnerId] ?? 0) + 1
-            room.value = { ...room.value, scores }
-          }
           break
         }
         case 'finished': {
@@ -285,10 +324,16 @@ export function useRoom() {
     dispatch(startMessage(options))
   }
 
-  function answer(answers: Record<TenseKey, string>): void {
+  function answer(reply: RoundReply): void {
     if (roundIndex.value === null) return
+    const message = answerMessage(roundIndex.value, reply)
+    if (!message) {
+      console.error('Refusing to send a reply that does not match the room contract', reply)
+      errorMessage.value = 'No se pudo enviar la respuesta'
+      return
+    }
     errorMessage.value = null
-    dispatch(answerMessage(roundIndex.value, answers))
+    dispatch(message)
   }
 
   function leave(): void {
@@ -300,13 +345,15 @@ export function useRoom() {
     transport?.close()
 
     room.value = null
-    hint.value = null
+    prompt.value = null
     roundIndex.value = null
     totalRounds.value = null
     progress.value = []
     result.value = null
     finished.value = null
     errorMessage.value = null
+    mirrorRound.value = null
+    mirroredPoints.value = {}
     status.value = 'idle'
   }
 
@@ -321,6 +368,15 @@ export function useRoom() {
 
   const players = computed<RoomPlayerInfo[]>(() => room.value?.players ?? [])
 
+  const hostId = computed<string | null>(() => room.value?.hostId ?? null)
+
+  /** Only the host starts the game, and only for a room that is still a lobby. */
+  const isHost = computed(() => {
+    if (!playerId.value) return false
+    return hostId.value === playerId.value
+  })
+
+  /** First player who is not me, kept for the two-player summaries. */
   const opponent = computed<RoomPlayerInfo | null>(
     () => players.value.find((player) => player.id !== playerId.value) ?? null
   )
@@ -334,7 +390,11 @@ export function useRoom() {
   })
 
   const canStart = computed(
-    () => players.value.length >= 2 && phase.value === 'lobby' && isConnected.value
+    () =>
+      isHost.value &&
+      players.value.length >= MIN_PLAYERS &&
+      phase.value === 'lobby' &&
+      isConnected.value
   )
 
   const hasAnsweredCurrentRound = computed(() =>
@@ -352,12 +412,23 @@ export function useRoom() {
     return player?.name ?? 'Jugador'
   }
 
+  function scoreFor(id: string): number {
+    return room.value?.scores[id] ?? 0
+  }
+
+  function pointsFor(id: string): number {
+    return progress.value.find((entry) => entry.playerId === id)?.points ?? 0
+  }
+
   return {
+    // contract limits, so the UI never hardcodes a two-player room
+    MIN_PLAYERS,
+    MAX_PLAYERS,
     // state
     status,
     code,
     room,
-    hint,
+    prompt,
     roundIndex,
     totalRounds,
     progress,
@@ -371,6 +442,8 @@ export function useRoom() {
     phase,
     isConnected,
     players,
+    hostId,
+    isHost,
     opponent,
     myScore,
     opponentScore,
@@ -383,6 +456,9 @@ export function useRoom() {
     start,
     answer,
     leave,
+    // helpers
     playerNameFor,
+    scoreFor,
+    pointsFor,
   }
 }

@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { verbs } from '~/data/verbs'
 import { useStats } from '~/composables/useStats'
-import { generateRoomCode } from '~/core/room-client'
+import { MAX_PLAYERS, MIN_PLAYERS, generateRoomCode, type RoomMode } from '~/core/room-client'
+import { DEFAULT_ROOM_MODE, roomModeLabel } from '~/components/room/room-modes'
+import RoomModeSelect from '~/components/room/RoomModeSelect.vue'
 
 type Section = 'practice' | 'stats' | 'verbs' | 'synonyms' | 'antonyms' | 'cognates' | 'false-cognates'
 
@@ -15,9 +17,17 @@ const { summary, problemVerbs } = useStats()
 
 const router = useRouter()
 
-/** Multiplayer is a route of its own: the menu only mints the code. */
+/**
+ * Multiplayer is a route of its own: the menu only mints the code.
+ * The chosen mode travels in the query so the room lobby opens on it; the host
+ * still has the final say before starting.
+ */
+const multiplayerMode = ref<RoomMode>(DEFAULT_ROOM_MODE)
+
+const multiplayerModeLabel = computed(() => roomModeLabel(multiplayerMode.value))
+
 function openMultiplayerRoom() {
-  router.push(`/room/${generateRoomCode()}`)
+  router.push(`/room/${generateRoomCode()}?mode=${multiplayerMode.value}`)
 }
 
 interface SectionCard {
@@ -143,13 +153,19 @@ const sectionCards = computed<SectionCard[]>(() => [
         <span class="card-action">{{ card.action }} →</span>
       </button>
 
-      <button type="button" class="section-card" @click="openMultiplayerRoom">
+      <div class="section-card section-card--multiplayer">
         <div class="card-icon">👥</div>
         <h2 class="card-title">Jugar con un amigo</h2>
-        <p class="card-desc">Crea una sala, compartí el enlace y compitan ronda a ronda en tiempo real.</p>
-        <span class="card-metric">2 jugadores · carrera de conjugaciones</span>
-        <span class="card-action">Crear sala →</span>
-      </button>
+        <p class="card-desc">
+          Crea una sala, compartí el enlace y jueguen de {{ MIN_PLAYERS }} a {{ MAX_PLAYERS }}
+          jugadores en tiempo real.
+        </p>
+        <RoomModeSelect v-model="multiplayerMode" label="Modo de la sala" />
+        <span class="card-metric">{{ multiplayerModeLabel }} · {{ MIN_PLAYERS }}–{{ MAX_PLAYERS }} jugadores</span>
+        <button type="button" class="card-action card-action--button" @click="openMultiplayerRoom">
+          Crear sala →
+        </button>
+      </div>
     </div>
 
     <p class="storage-hint">
@@ -347,6 +363,38 @@ const sectionCards = computed<SectionCard[]>(() => [
   font-size: 0.825rem;
   font-weight: 700;
   color: #fff;
+}
+
+/* The multiplayer card holds its own mode picker, so it is not one big button. */
+.section-card--multiplayer {
+  cursor: default;
+}
+
+.section-card--multiplayer:hover {
+  transform: none;
+  box-shadow: var(--shadow-card);
+}
+
+.section-card--multiplayer :deep(.mode-select) {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.card-action--button {
+  background: transparent;
+  border: none;
+  padding-left: 0;
+  padding-bottom: 0;
+  font: inherit;
+  font-size: 0.825rem;
+  font-weight: 700;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.card-action--button:hover {
+  color: var(--primary-light);
 }
 
 .storage-hint {

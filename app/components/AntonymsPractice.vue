@@ -1,39 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { ANTONYM_ITEMS } from '~/data/practice'
 
-interface AntonymWord {
-  word: string
-  antonyms: string[]
-  hint?: string
-}
-
-const words: AntonymWord[] = [
-  { word: 'hot', antonyms: ['cold', 'cool', 'chilly', 'icy', 'frigid'], hint: 'caliente' },
-  { word: 'big', antonyms: ['small', 'little', 'tiny', 'miniature'], hint: 'grande' },
-  { word: 'happy', antonyms: ['sad', 'unhappy', 'miserable', 'gloomy', 'depressed'], hint: 'feliz' },
-  { word: 'fast', antonyms: ['slow', 'sluggish', 'leisurely'], hint: 'rápido' },
-  { word: 'good', antonyms: ['bad', 'evil', 'terrible', 'awful', 'horrible'], hint: 'bueno' },
-  { word: 'old', antonyms: ['new', 'young', 'modern', 'fresh'], hint: 'viejo' },
-  { word: 'rich', antonyms: ['poor', 'broke', 'penniless', 'needy'], hint: 'rico' },
-  { word: 'strong', antonyms: ['weak', 'feeble', 'frail', 'fragile'], hint: 'fuerte' },
-  { word: 'clean', antonyms: ['dirty', 'filthy', 'grimy', 'unclean'], hint: 'limpio' },
-  { word: 'easy', antonyms: ['hard', 'difficult', 'tough', 'challenging'], hint: 'fácil' },
-  { word: 'cold', antonyms: ['hot', 'warm', 'heated', 'boiling'], hint: 'frío' },
-  { word: 'early', antonyms: ['late', 'delayed', 'tardy'], hint: 'temprano' },
-  { word: 'late', antonyms: ['early', 'punctual', 'prompt'], hint: 'tarde' },
-  { word: 'high', antonyms: ['low', 'short', 'lowered'], hint: 'alto' },
-  { word: 'low', antonyms: ['high', 'tall', 'elevated'], hint: 'bajo' },
-  { word: 'long', antonyms: ['short', 'brief', 'compressed'], hint: 'largo' },
-  { word: 'full', antonyms: ['empty', 'vacant', 'hollow'], hint: 'lleno' },
-  { word: 'empty', antonyms: ['full', 'filled', 'occupied'], hint: 'vacío' },
-  { word: 'wide', antonyms: ['narrow', 'tight', 'cramped'], hint: 'ancho' },
-  { word: 'narrow', antonyms: ['wide', 'broad', 'spacious'], hint: 'estrecho' },
-  { word: 'near', antonyms: ['far', 'distant', 'remote'], hint: 'cerca' },
-  { word: 'far', antonyms: ['near', 'close', 'nearby'], hint: 'lejos' },
-  { word: 'true', antonyms: ['false', 'untrue', 'fake'], hint: 'verdadero' },
-  { word: 'safe', antonyms: ['dangerous', 'risky', 'unsafe'], hint: 'seguro' },
-  { word: 'wet', antonyms: ['dry', 'arid', 'parched'], hint: 'mojado' },
-]
+const words = ANTONYM_ITEMS
 
 const currentIndex = ref(0)
 const userInput = ref('')

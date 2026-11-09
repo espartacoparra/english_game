@@ -1,8 +1,19 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoom } from '~/composables/useRoom'
-import { isValidRoomCode, normalizeRoomCode } from '~/core/room-client'
-import type { TenseKey } from '~/types/verb'
+import {
+  isValidRoomCode,
+  normalizeRoomCode,
+  type RoomMode,
+  type RoundPrompt,
+  type RoundReply,
+} from '~/core/room-client'
+import { DEFAULT_ROOM_MODE, isRoomMode, roomModeLabel } from '~/components/room/room-modes'
+import RoomModeSelect from '~/components/room/RoomModeSelect.vue'
+import RoomRoundTenses from '~/components/room/RoomRoundTenses.vue'
+import RoomRoundList from '~/components/room/RoomRoundList.vue'
+import RoomRoundChoice from '~/components/room/RoomRoundChoice.vue'
+import RoomRoundBoard from '~/components/room/RoomRoundBoard.vue'
 
 const route = useRoute()
 
@@ -11,7 +22,8 @@ const codeIsValid = computed(() => isValidRoomCode(roomCode.value))
 
 const {
   status,
-  hint,
+  room,
+  prompt,
   roundIndex,
   totalRounds,
   progress,
@@ -22,12 +34,12 @@ const {
   playerName,
   phase,
   players,
-  opponent,
-  myScore,
-  opponentScore,
+  isHost,
   canStart,
   hasAnsweredCurrentRound,
   firstAnsweredPlayerId,
+  MIN_PLAYERS,
+  MAX_PLAYERS,
   connect,
   join,
   start,
@@ -35,14 +47,6 @@ const {
   leave,
   playerNameFor,
 } = useRoom()
-
-const tenseOrder: TenseKey[] = ['base', 'past', 'participle']
-
-const tenseLabels: Record<TenseKey, string> = {
-  base: 'Infinitivo (Base)',
-  past: 'Pasado Simple (Past)',
-  participle: 'Participio (Participle)',
-}
 
 const statusLabels = {
   idle: 'Sin conectar',
@@ -52,15 +56,29 @@ const statusLabels = {
   error: 'Sin conexión',
 } as const
 
-const nameInput = ref('')
-const answers = ref<Record<TenseKey, string>>({ base: '', past: '', participle: '' })
-const submittedRound = ref<number | null>(null)
-const copyState = ref<'idle' | 'copied' | 'failed'>('idle')
-const roomLink = ref('')
-
 const ROUNDS_PER_GAME = 5
 
+const nameInput = ref('')
+const submittedRound = ref<number | null>(null)
+const copyState = ref<'idle' | 'code' | 'link' | 'failed'>('idle')
+const roomLink = ref('')
+let copyTimer: ReturnType<typeof setTimeout> | null = null
+
+const queryMode = route.query.mode
+const selectedMode = ref<RoomMode>(isRoomMode(queryMode) ? queryMode : DEFAULT_ROOM_MODE)
+
+/** Up to eight slots: the lobby shows the empty ones instead of hiding them. */
+const playerSlots = computed(() =>
+  Array.from({ length: MAX_PLAYERS }, (_, index) => players.value[index] ?? null)
+)
+
+/** The board asks for names by id, and must never guess whose turn it is. */
+const playerNames = computed<Record<string, string>>(() =>
+  Object.fromEntries(players.value.map((player) => [player.id, player.name]))
+)
+
 const roundNumber = computed(() => (roundIndex.value === null ? 0 : roundIndex.value + 1))
+
 const progressPercent = computed(() => {
   if (!totalRounds.value) return 0
   return Math.round(((roundNumber.value - 1) / totalRounds.value) * 100)
@@ -81,7 +99,7 @@ const shownResult = computed(() => {
 const winnerLabel = computed(() => {
   const current = shownResult.value
   if (!current) return ''
-  if (!current.winnerId) return 'Nadie acertó esta ronda'
+  if (!current.winnerId) return 'Nadie cerró la ronda'
   if (current.winnerId === playerId.value) return '¡Ganaste la ronda!'
   return `Ganó ${playerNameFor(current.winnerId)}`
 })
@@ -93,19 +111,47 @@ const firstAnswerer = computed(() => {
   return `Contestó primero ${playerNameFor(id)}`
 })
 
-const finalWinner = computed(() => {
-  if (!finished.value) return ''
-  if (!finished.value.players || finished.value.players.length < 2) return ''
-  const [first, second] = [finished.value.players[0], finished.value.players[1]]
-  if (!first || !second) return ''
-  const firstScore = finished.value.scores[first.id] ?? 0
-  const secondScore = finished.value.scores[second.id] ?? 0
-  if (firstScore === secondScore) return 'Empate'
-  return firstScore > secondScore ? `Ganó ${first.name}` : `Ganó ${second.name}`
+const startHint = computed(() => {
+  if (!isHost.value) return 'Solo quien creó la sala puede empezar la partida.'
+  if (players.value.length < MIN_PLAYERS) {
+    return `Hacen falta ${MIN_PLAYERS} jugadores para empezar.`
+  }
+  if (!canStart.value) return 'Conectando con la sala…'
+  return ''
 })
 
+const modeLabel = computed(() => roomModeLabel(room.value?.mode ?? selectedMode.value))
+
+/** Ranked players for the final screen, highest score first. */
+const finalRanking = computed(() => {
+  const list = finished.value?.players ?? players.value
+  const scores = finished.value?.scores ?? room.value?.scores ?? {}
+  return [...list]
+    .map((player) => ({ ...player, score: scores[player.id] ?? 0 }))
+    .sort((a, b) => b.score - a.score)
+})
+
+// The dispatcher only hands a component a prompt of its own family, so each
+// branch keeps its narrowed type without relying on template narrowing.
+const tensesPrompt = computed(() => (prompt.value?.kind === 'tenses' ? prompt.value : null))
+const choicePrompt = computed(() => (prompt.value?.kind === 'choice' ? prompt.value : null))
+const listPrompt = computed(() => (prompt.value?.kind === 'list' ? prompt.value : null))
+const boardPrompt = computed(() => (prompt.value?.kind === 'board' ? prompt.value : null))
+
+function summaryFor(value: RoundPrompt): string {
+  switch (value.kind) {
+    case 'tenses':
+      return `${value.spanish} · ${value.type === 'irregular' ? 'irregular' : 'regular'} · ${value.level}`
+    case 'choice':
+      return value.item
+    case 'list':
+      return value.word
+    case 'board':
+      return `Cadenas completadas: ${value.completedChains} de ${value.totalChains}`
+  }
+}
+
 function resetRoundInputs(): void {
-  answers.value = { base: '', past: '', participle: '' }
   submittedRound.value = null
 }
 
@@ -116,6 +162,8 @@ watch(roundIndex, () => {
 // Nuxt reuses this page component when only the room code changes, so follow
 // the param instead of relying on a fresh mount.
 watch(roomCode, (nextCode) => {
+  const nextMode = route.query.mode
+  selectedMode.value = isRoomMode(nextMode) ? nextMode : DEFAULT_ROOM_MODE
   if (typeof window === 'undefined') return
   leave()
   if (!isValidRoomCode(nextCode)) return
@@ -129,20 +177,30 @@ function handleJoin(): void {
 }
 
 function handleStart(): void {
-  start({ mode: 'write-all', count: ROUNDS_PER_GAME })
+  if (!canStart.value) return
+  start({ mode: selectedMode.value, count: ROUNDS_PER_GAME })
 }
 
-function handleSubmit(): void {
+function handleReply(reply: RoundReply): void {
   if (roundIndex.value === null || answersLocked.value) return
-  answer({ ...answers.value })
+  answer(reply)
   submittedRound.value = roundIndex.value
 }
 
-async function copyRoomLink(): Promise<void> {
-  if (!roomLink.value) return
+function resetCopyState(): void {
+  if (copyTimer !== null) clearTimeout(copyTimer)
+  copyTimer = setTimeout(() => {
+    copyTimer = null
+    copyState.value = 'idle'
+  }, 2000)
+}
+
+async function copyText(text: string, kind: 'code' | 'link'): Promise<void> {
+  if (!text) return
   try {
-    await navigator.clipboard.writeText(roomLink.value)
-    copyState.value = 'copied'
+    await navigator.clipboard.writeText(text)
+    copyState.value = kind
+    resetCopyState()
   } catch {
     copyState.value = 'failed'
   }
@@ -152,8 +210,8 @@ function playerSubmitted(playerIdToCheck: string): boolean {
   return progress.value.some((entry) => entry.playerId === playerIdToCheck)
 }
 
-function playerAnswerLabel(entry: { correct: boolean }): string {
-  return entry.correct ? '✓' : '✗'
+function playerPoints(playerIdToCheck: string): number {
+  return progress.value.find((entry) => entry.playerId === playerIdToCheck)?.points ?? 0
 }
 
 onMounted(() => {
@@ -165,6 +223,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  if (copyTimer !== null) clearTimeout(copyTimer)
   leave()
 })
 </script>
@@ -184,8 +243,11 @@ onUnmounted(() => {
           <span class="status-dot" />
           {{ statusLabels[status] }}
         </span>
-        <button v-if="codeIsValid" type="button" class="ghost-btn" @click="copyRoomLink">
-          {{ copyState === 'copied' ? '¡Copiado!' : copyState === 'failed' ? 'Copiá el enlace' : 'Copiar enlace' }}
+        <button v-if="codeIsValid" type="button" class="ghost-btn" @click="copyText(roomCode, 'code')">
+          {{ copyState === 'code' ? '¡Copiado!' : 'Copiar código' }}
+        </button>
+        <button v-if="codeIsValid" type="button" class="ghost-btn" @click="copyText(roomLink, 'link')">
+          {{ copyState === 'link' ? '¡Copiado!' : 'Copiar enlace' }}
         </button>
       </div>
     </header>
@@ -204,27 +266,28 @@ onUnmounted(() => {
         {{ errorMessage }}
       </p>
       <p v-if="copyState === 'failed' && roomLink" class="hint-banner">
-        Enlace de la sala: <code>{{ roomLink }}</code>
+        No se pudo copiar. Enlace de la sala: <code>{{ roomLink }}</code>
       </p>
 
       <!-- Lobby -->
       <main v-if="phase === 'lobby' || phase === 'none'" class="room-card animate-pop">
-        <h1 class="card-title">Sala de dos jugadores</h1>
+        <h1 class="card-title">Sala de {{ MIN_PLAYERS }} a {{ MAX_PLAYERS }} jugadores</h1>
         <p class="card-text">
-          Compartí el enlace con un amigo. Cuando estén los dos, empieza la carrera: gana la ronda
-          quien acierte primero las tres formas.
+          Compartí el enlace o el código. Cuando estén al menos {{ MIN_PLAYERS }}, quien creó la
+          sala elige el modo y empieza la partida.
         </p>
 
         <ul class="player-list">
-          <li class="player-row">
-            <span class="player-slot">1</span>
-            <span class="player-name">{{ players[0]?.name ?? 'Esperando jugador…' }}</span>
-            <span v-if="players[0]?.id === playerId" class="you-tag">Vos</span>
-          </li>
-          <li class="player-row">
-            <span class="player-slot">2</span>
-            <span class="player-name">{{ players[1]?.name ?? 'Esperando jugador…' }}</span>
-            <span v-if="players[1]?.id === playerId" class="you-tag">Vos</span>
+          <li
+            v-for="(slot, index) in playerSlots"
+            :key="index"
+            class="player-row"
+            :class="{ 'player-row--empty': !slot }"
+          >
+            <span class="player-slot">{{ index + 1 }}</span>
+            <span class="player-name">{{ slot?.name ?? 'Esperando jugador…' }}</span>
+            <span v-if="slot && slot.id === room?.hostId" class="host-tag">Anfitrión</span>
+            <span v-if="slot && slot.id === playerId" class="you-tag">Vos</span>
           </li>
         </ul>
 
@@ -246,94 +309,98 @@ onUnmounted(() => {
           </div>
         </form>
 
+        <RoomModeSelect v-if="isHost" v-model="selectedMode" />
+        <p v-else class="mode-readonly">Modo: <strong>{{ modeLabel }}</strong></p>
+
         <button type="button" class="primary-btn" :disabled="!canStart" @click="handleStart">
           Empezar partida
         </button>
-        <p v-if="!canStart" class="footnote">
-          {{ players.length < 2 ? 'Hacen falta dos jugadores para empezar.' : 'Conectando con la sala…' }}
-        </p>
+        <p v-if="startHint" class="footnote">{{ startHint }}</p>
       </main>
 
-      <!-- Race -->
+      <!-- Playing -->
       <main v-else-if="phase === 'playing'" class="room-card animate-pop">
         <header class="scoreboard">
-          <div class="score-cell" :class="{ 'score-cell--me': true }">
-            <span class="score-name">{{ playerName || 'Vos' }}</span>
-            <span class="score-value">{{ myScore }}</span>
-          </div>
-          <span class="score-vs">vs</span>
-          <div class="score-cell">
-            <span class="score-name">{{ opponent?.name ?? 'Rival' }}</span>
-            <span class="score-value">{{ opponentScore }}</span>
+          <div
+            v-for="player in players"
+            :key="player.id"
+            class="score-cell"
+            :class="{ 'score-cell--me': player.id === playerId }"
+          >
+            <span class="score-name">{{ player.id === playerId ? 'Vos' : player.name }}</span>
+            <span class="score-value">{{ room?.scores[player.id] ?? 0 }}</span>
           </div>
         </header>
 
         <div class="round-strip">
-          <span>Verbo {{ roundNumber }} de {{ totalRounds ?? '?' }}</span>
+          <span>Ronda {{ roundNumber }} de {{ totalRounds ?? '?' }}</span>
           <span v-if="firstAnswerer" class="first-answerer">{{ firstAnswerer }}</span>
         </div>
         <div class="progress-bar-track">
           <div class="progress-bar-fill" :style="{ width: `${progressPercent}%` }" />
         </div>
 
-        <div v-if="shownResult" class="result-panel" :class="shownResult.winnerId ? 'result-panel--win' : 'result-panel--none'">
+        <div
+          v-if="shownResult"
+          class="result-panel"
+          :class="shownResult.winnerId ? 'result-panel--win' : 'result-panel--none'"
+        >
           <p class="result-title">{{ winnerLabel }}</p>
-          <p class="result-verb">
-            <strong>{{ shownResult.verb.spanish }}</strong> ·
-            {{ shownResult.verb.base }} / {{ shownResult.verb.past }} / {{ shownResult.verb.participle }}
+          <p class="result-prompt">{{ summaryFor(shownResult.prompt) }}</p>
+          <p v-if="shownResult.solution" class="result-solution">
+            <strong>Solución:</strong> {{ shownResult.solution }}
           </p>
           <ul class="result-answers">
-            <li v-for="entry in shownResult.answers" :key="entry.playerId" class="result-answer-row">
+            <li v-for="entry in shownResult.outcomes" :key="entry.playerId" class="result-answer-row">
               <span class="result-player">{{ playerNameFor(entry.playerId) }}</span>
               <span class="result-mark" :class="entry.correct ? 'mark-ok' : 'mark-bad'">
-                {{ playerAnswerLabel(entry) }}
+                {{ entry.correct ? '✓' : '✗' }}
               </span>
-              <span class="result-forms">
-                {{ entry.answers.base || '—' }} / {{ entry.answers.past || '—' }} /
-                {{ entry.answers.participle || '—' }}
-              </span>
+              <span class="result-points">+{{ entry.points }}</span>
+              <span v-if="entry.detail" class="result-forms">{{ entry.detail }}</span>
             </li>
           </ul>
         </div>
 
-        <div v-if="hint" class="prompt-box">
-          <div class="badges">
-            <span class="badge" :class="hint.type === 'irregular' ? 'badge-irregular' : 'badge-regular'">
-              {{ hint.type === 'irregular' ? 'Irregular' : 'Regular' }}
-            </span>
-            <span class="badge badge-level">Nivel {{ hint.level }}</span>
-          </div>
-          <h2 class="prompt-spanish">{{ hint.spanish }}</h2>
+        <div v-if="prompt" class="round-panel">
+          <RoomRoundTenses
+            v-if="tensesPrompt"
+            :prompt="tensesPrompt"
+            :disabled="answersLocked"
+            @submit="handleReply"
+          />
+          <RoomRoundList
+            v-else-if="listPrompt"
+            :prompt="listPrompt"
+            :key="roundIndex ?? 0"
+            :disabled="answersLocked"
+            @submit="handleReply"
+          />
+          <RoomRoundChoice
+            v-else-if="choicePrompt"
+            :prompt="choicePrompt"
+            :key="roundIndex ?? 0"
+            :disabled="answersLocked"
+            @submit="handleReply"
+          />
+          <RoomRoundBoard
+            v-else-if="boardPrompt"
+            :prompt="boardPrompt"
+            :key="roundIndex ?? 0"
+            :disabled="answersLocked"
+            :player-names="playerNames"
+            :self-id="playerId"
+            @submit="handleReply"
+          />
         </div>
-
-        <form class="tense-inputs" @submit.prevent="handleSubmit">
-          <div v-for="tense in tenseOrder" :key="tense" class="input-card">
-            <label :for="`room-${tense}`" class="field-label">{{ tenseLabels[tense] }}</label>
-            <input
-              :id="`room-${tense}`"
-              v-model="answers[tense]"
-              type="text"
-              autocomplete="off"
-              autocapitalize="none"
-              spellcheck="false"
-              :disabled="answersLocked"
-              placeholder="..."
-              class="text-input"
-            />
-          </div>
-
-          <button type="submit" class="primary-btn" :disabled="answersLocked">
-            {{ answersLocked ? 'Esperando al rival…' : 'Enviar respuestas' }}
-          </button>
-          <p v-if="answersLocked" class="footnote">
-            {{ hasAnsweredCurrentRound ? 'Respuestas enviadas.' : 'Enviando…' }}
-          </p>
-        </form>
+        <p v-else class="footnote">Esperando la ronda…</p>
 
         <ul class="live-progress">
           <li v-for="player in players" :key="player.id" class="live-progress-row">
-            <span>{{ player.name }}</span>
-            <span v-if="playerSubmitted(player.id)" class="answered-tag">contestó</span>
+            <span class="live-progress-name">{{ player.id === playerId ? 'Vos' : player.name }}</span>
+            <span v-if="playerSubmitted(player.id)" class="answered-tag">
+              contestó · +{{ playerPoints(player.id) }}
+            </span>
             <span v-else class="waiting-tag">pensando…</span>
           </li>
         </ul>
@@ -342,12 +409,14 @@ onUnmounted(() => {
       <!-- Finished -->
       <main v-else class="room-card animate-pop">
         <h1 class="card-title">Partida terminada</h1>
-        <p class="card-text">{{ finalWinner }}</p>
+        <p class="card-text">Modo: {{ modeLabel }}</p>
 
         <ul class="player-list">
-          <li v-for="player in finished?.players ?? players" :key="player.id" class="player-row">
+          <li v-for="(player, index) in finalRanking" :key="player.id" class="player-row">
+            <span class="player-slot">{{ index + 1 }}</span>
             <span class="player-name">{{ player.name }}</span>
-            <span class="player-score">{{ finished?.scores[player.id] ?? 0 }}</span>
+            <span v-if="player.id === playerId" class="you-tag">Vos</span>
+            <span class="player-score">{{ player.score }}</span>
           </li>
         </ul>
 
@@ -536,6 +605,11 @@ onUnmounted(() => {
   border: 1px solid var(--border-subtle);
 }
 
+.player-row--empty {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
 .player-slot {
   display: inline-flex;
   align-items: center;
@@ -561,6 +635,14 @@ onUnmounted(() => {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--primary-light);
+}
+
+.host-tag {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--streak);
 }
 
 .player-score {
@@ -612,6 +694,11 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
+.mode-readonly {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
 .primary-btn {
   text-align: center;
   padding: 0.8rem 1.25rem;
@@ -643,11 +730,10 @@ onUnmounted(() => {
 }
 
 .scoreboard {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  padding: 0.85rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 0.5rem;
+  padding: 0.6rem;
   border-radius: var(--radius-md);
   background: var(--surface-inset);
   border: 1px solid var(--border-subtle);
@@ -657,12 +743,17 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  flex: 1;
   gap: 0.15rem;
+  padding: 0.4rem 0.25rem;
+  border-radius: var(--radius-sm);
+}
+
+.score-cell--me {
+  background: rgba(99, 102, 241, 0.14);
 }
 
 .score-name {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: var(--text-muted);
   max-width: 12ch;
@@ -676,17 +767,9 @@ onUnmounted(() => {
 }
 
 .score-value {
-  font-size: 1.6rem;
+  font-size: 1.4rem;
   font-weight: 800;
   color: #fff;
-}
-
-.score-vs {
-  font-size: 0.75rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-dim);
 }
 
 .round-strip {
@@ -737,9 +820,14 @@ onUnmounted(() => {
   color: #fff;
 }
 
-.result-verb {
+.result-prompt {
   font-size: 0.85rem;
   color: var(--text-muted);
+}
+
+.result-solution {
+  font-size: 0.85rem;
+  color: var(--text-main);
 }
 
 .result-answers {
@@ -775,83 +863,45 @@ onUnmounted(() => {
   color: var(--error);
 }
 
+.result-points {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: var(--primary-light);
+}
+
 .result-forms {
   font-family: var(--font-mono);
   font-size: 0.78rem;
 }
 
-.prompt-box {
+.round-panel {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  text-align: center;
-}
-
-.badges {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.badge {
-  padding: 0.25rem 0.7rem;
-  border-radius: var(--radius-full);
-  font-size: 0.7rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.badge-regular {
-  background: rgba(16, 185, 129, 0.15);
-  color: #6ee7b7;
-  border: 1px solid var(--success-border);
-}
-
-.badge-irregular {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fcd34d;
-  border: 1px solid rgba(245, 158, 11, 0.4);
-}
-
-.badge-level {
-  background: rgba(99, 102, 241, 0.15);
-  color: var(--primary-light);
-  border: 1px solid rgba(99, 102, 241, 0.35);
-}
-
-.prompt-spanish {
-  font-size: 1.8rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: #fff;
-}
-
-.tense-inputs {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.input-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+  gap: 1rem;
 }
 
 .live-progress {
   list-style: none;
   display: flex;
-  gap: 1rem;
-  justify-content: center;
-  font-size: 0.78rem;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
   color: var(--text-dim);
 }
 
 .live-progress-row {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+}
+
+.live-progress-name {
+  font-weight: 700;
+  color: var(--text-main);
 }
 
 .answered-tag {

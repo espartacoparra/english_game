@@ -5,7 +5,7 @@ import {
   applyResult,
   createCustomSession,
   createSession,
-  filterVerbs,
+  filterVerbs as filterVerbPool,
   gradeAnswers,
   normalizedCompare,
   resetSession,
@@ -106,6 +106,10 @@ export function useVerbGame() {
     maxStreak.value = next.maxStreak
     sessionStartTime.value = next.sessionStartTime
     sessionDuration.value = next.sessionDuration
+  }
+
+  function filterVerbs(type: VerbType | 'all', level: VerbLevel | 'all'): Verb[] {
+    return filterVerbPool(verbs, type, level)
   }
 
   function setupGame(

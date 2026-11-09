@@ -1,13 +1,14 @@
+import type {
+  RoomClientMessage,
+  RoomServerEvent,
+} from '../../../app/core/room-protocol'
 import {
   createRoom,
-  joinRoom,
-  publicRoom,
-  startGame,
-  submitAnswer,
-  type RoomEvent,
+  expireRound,
+  handleMessage,
+  leaveRoom,
   type RoomState,
 } from './machine'
-import type { GameMode, TenseKey, VerbLevel, VerbType } from '../../../app/types/verb'
 
 export interface Env {
   ROOMS: DurableObjectNamespace
@@ -17,17 +18,6 @@ interface Attachment {
   playerId: string
 }
 
-type ClientMessage =
-  | { t: 'join'; playerId: string; name: string }
-  | {
-      t: 'start'
-      mode?: GameMode
-      count?: number | 'all'
-      type?: VerbType | 'all'
-      level?: VerbLevel | 'all'
-    }
-  | { t: 'answer'; index: number; answers: Partial<Record<TenseKey, string>> }
-
 const ROOM_KEY = 'room'
 
 /**
@@ -35,8 +25,8 @@ const ROOM_KEY = 'room'
  *
  * WebSockets use the Hibernation API, so an idle room costs no duration. All
  * mutations go through the pure machine in `machine.ts`; this class only owns
- * sockets, persistence and broadcasting, which also gives the race a single
- * serialized order of arrival.
+ * sockets, persistence, broadcasting and the round alarm, which also gives the
+ * race a single serialized order of arrival.
  */
 export class Room implements DurableObject {
   private readonly ctx: DurableObjectState
@@ -71,10 +61,10 @@ export class Room implements DurableObject {
   }
 
   async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
-    let message: ClientMessage
+    let message: RoomClientMessage
     try {
       const text = typeof raw === 'string' ? raw : new TextDecoder().decode(raw)
-      message = JSON.parse(text) as ClientMessage
+      message = JSON.parse(text) as RoomClientMessage
     } catch {
       this.send(ws, { t: 'error', code: 'bad_json', message: 'Mensaje inválido' })
       return
@@ -85,54 +75,46 @@ export class Room implements DurableObject {
       return
     }
 
+    const playerId = attachmentOf(ws)?.playerId ?? null
+    const result = handleMessage(this.room, playerId, message, Date.now())
+    if (!result.ok) return this.send(ws, errorEvent(result.error))
+
+    // The join travels without an identity, so the socket keeps it after the
+    // machine accepted the name and the slot.
     if (message.t === 'join') {
-      const result = joinRoom(
-        this.room,
-        { name: message.name ?? '', playerId: message.playerId ?? '' },
-        Date.now()
-      )
-      if (!result.ok) return this.send(ws, errorEvent(result.error))
-      this.room = result.state
       ws.serializeAttachment({ playerId: message.playerId } satisfies Attachment)
+    }
+
+    this.room = result.state
+    await this.persist()
+    this.broadcast(result.events)
+    // A `start` opens a round and an `answer` that keeps it open leaves the same
+    // deadline in place; either way the alarm now has to match the round in play.
+    await this.syncAlarm()
+  }
+
+  /**
+   * The Durable Object alarm closes the round that ran out of time.
+   *
+   * This is the only timer a hibernating room has: `setTimeout` dies with the
+   * isolate, an alarm survives it. The state is read back from storage first, so
+   * an alarm that fires for a round which already closed (a reply beat it, or a
+   * second alarm was armed) finds nothing to expire and does nothing at all.
+   */
+  async alarm(): Promise<void> {
+    this.room = (await this.ctx.storage.get<RoomState>(ROOM_KEY)) ?? this.room
+    if (!this.room) return
+
+    const result = expireRound(this.room, Date.now())
+    if (!result.ok) return
+    this.room = result.state
+    if (result.events.length > 0) {
       await this.persist()
       this.broadcast(result.events)
-      return
     }
-
-    const playerId = (ws.deserializeAttachment() as Attachment | null)?.playerId
-    if (!playerId) {
-      this.send(ws, { t: 'error', code: 'join_first', message: 'Primero unite a la sala' })
-      return
-    }
-
-    if (message.t === 'start') {
-      const result = startGame(
-        this.room,
-        {
-          mode: message.mode,
-          count: message.count,
-          type: message.type,
-          level: message.level,
-        },
-        Date.now()
-      )
-      if (!result.ok) return this.send(ws, errorEvent(result.error))
-      this.room = result.state
-      await this.persist()
-      this.broadcast(result.events)
-      return
-    }
-
-    if (message.t === 'answer') {
-      const result = submitAnswer(this.room, playerId, message.index, message.answers ?? {}, Date.now())
-      if (!result.ok) return this.send(ws, errorEvent(result.error))
-      this.room = result.state
-      await this.persist()
-      this.broadcast(result.events)
-      return
-    }
-
-    this.send(ws, { t: 'error', code: 'unknown_message', message: 'Mensaje desconocido' })
+    // Expiry opened the next round of the session or finished the game, so the
+    // alarm is either re-armed for the new deadline or cleared.
+    await this.syncAlarm()
   }
 
   async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
@@ -141,6 +123,21 @@ export class Room implements DurableObject {
     } catch {
       // The socket may already be closed.
     }
+
+    const playerId = attachmentOf(ws)?.playerId
+    if (!playerId || !this.room) return
+
+    // A socket that goes away leaves the lobby, which is also how the host
+    // hands the room over. Mid-game the slot stays, so scores and the round
+    // survive a reload.
+    const result = leaveRoom(this.room, playerId)
+    if (!result.ok || result.events.length === 0) return
+    this.room = result.state
+    await this.persist()
+    this.broadcast(result.events)
+    // A departure can empty the lobby, and an empty room must not keep a stale
+    // alarm armed for a round nobody is in any more.
+    await this.syncAlarm()
   }
 
   async webSocketError(ws: WebSocket): Promise<void> {
@@ -155,7 +152,31 @@ export class Room implements DurableObject {
     if (this.room) await this.ctx.storage.put(ROOM_KEY, this.room)
   }
 
-  private broadcast(events: RoomEvent[]): void {
+  /**
+   * Arms the alarm for the deadline of the round in play, or clears it.
+   *
+   * Called when a round opens as well as after every message and every
+   * departure, so it derives the deadline from the state the machine just
+   * produced instead of tracking it: setting the same time twice is what the
+   * storage API does anyway, and a room with nothing to close ends up with no
+   * alarm at all.
+   */
+  private async syncAlarm(): Promise<void> {
+    const deadline = this.openDeadline()
+    if (deadline === null) await this.ctx.storage.deleteAlarm()
+    else await this.ctx.storage.setAlarm(deadline)
+  }
+
+  /** The deadline of the round in play, or null when no round may close on time. */
+  private openDeadline(): number | null {
+    const room = this.room
+    // A lobby never closes on time, a finished game has nothing left to close,
+    // and an empty room must not keep a stale alarm.
+    if (!room || room.phase !== 'playing' || room.players.length === 0) return null
+    return room.round?.deadline ?? null
+  }
+
+  private broadcast(events: RoomServerEvent[]): void {
     const payload = JSON.stringify(events)
     for (const socket of this.ctx.getWebSockets()) {
       try {
@@ -175,6 +196,14 @@ export class Room implements DurableObject {
   }
 }
 
+function attachmentOf(ws: WebSocket): Attachment | null {
+  try {
+    return (ws.deserializeAttachment() as Attachment | null) ?? null
+  } catch {
+    return null
+  }
+}
+
 function errorEvent(code: string): { t: 'error'; code: string; message: string } {
   return { t: 'error', code, message: errorMessage(code) }
 }
@@ -182,15 +211,25 @@ function errorEvent(code: string): { t: 'error'; code: string; message: string }
 function errorMessage(code: string): string {
   switch (code) {
     case 'room_full':
-      return 'La sala ya tiene dos jugadores'
+      return 'La sala ya tiene ocho jugadores'
+    case 'below_min_players':
+      return 'Hacen falta al menos dos jugadores'
+    case 'not_host':
+      return 'Solo el anfitrión puede empezar la partida'
+    case 'unsupported_mode':
+      return 'Ese modo todavía no está disponible en salas'
+    case 'invalid_reply':
+      return 'Respuesta inválida'
+    case 'no_rounds':
+      return 'No hay ítems para esos filtros'
     case 'game_in_progress':
       return 'La partida ya empezó'
-    case 'need_two_players':
-      return 'Hacen falta dos jugadores'
     case 'already_started':
       return 'La partida ya empezó'
     case 'already_answered':
       return 'Ya contestaste este verbo'
+    case 'not_your_turn':
+      return 'Todavía no es tu turno'
     case 'stale_round':
       return 'La ronda ya avanzó'
     case 'not_playing':
@@ -201,6 +240,10 @@ function errorMessage(code: string): string {
       return 'Escribí un nombre'
     case 'invalid_player':
       return 'Jugador inválido'
+    case 'join_first':
+      return 'Primero unite a la sala'
+    case 'unknown_message':
+      return 'Mensaje desconocido'
     default:
       return 'Error de la sala'
   }
