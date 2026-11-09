@@ -1,6 +1,20 @@
 import { computed } from 'vue'
 import { verbs } from '~/data/verbs'
 import { useStats } from '~/composables/useStats'
+import {
+  applyResult,
+  createCustomSession,
+  createSession,
+  filterVerbs,
+  gradeAnswers,
+  normalizedCompare,
+  resetSession,
+  retrySession,
+  sessionAccuracy,
+  sessionScore,
+  shuffle,
+  type GameSessionState,
+} from '~/core/game-core'
 import type { GameMode, GameResult, TenseKey, Verb, VerbLevel, VerbType } from '~/types/verb'
 
 export interface Card {
@@ -9,60 +23,6 @@ export interface Card {
   tense: TenseKey | 'spanish'
   label: string
   matched: boolean
-}
-
-// Pure helpers: no state, safe to share between the client and a server runtime.
-
-function shuffle<T>(array: T[]): T[] {
-  const arr = [...array]
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[arr[i], arr[j]] = [arr[j], arr[i]]
-  }
-  return arr
-}
-
-function normalizedCompare(userAnswer: string, expectedAnswer: string): boolean {
-  const u = userAnswer.trim().toLowerCase()
-  const exp = expectedAnswer.trim().toLowerCase()
-
-  if (u === exp) return true
-
-  // Handle slashes like "was/were" or alternative spellings
-  const parts = exp.split('/').map((s) => s.trim().toLowerCase())
-  if (parts.includes(u)) return true
-
-  // Common alternate forms
-  const alternates: Record<string, string[]> = {
-    learnt: ['learned'],
-    learned: ['learnt'],
-    burnt: ['burned'],
-    burned: ['burnt'],
-    dreamt: ['dreamed'],
-    dreamed: ['dreamt'],
-    smelt: ['smelled'],
-    smelled: ['smelt'],
-    spelt: ['spelled'],
-    spelled: ['spelt'],
-    spilt: ['spilled'],
-    spilled: ['spilt'],
-    gotten: ['got'],
-    got: ['gotten'],
-  }
-
-  if (alternates[exp] && alternates[exp].includes(u)) {
-    return true
-  }
-
-  return false
-}
-
-function filterVerbs(type: VerbType | 'all', level: VerbLevel | 'all'): Verb[] {
-  return verbs.filter((v) => {
-    const matchType = type === 'all' || v.type === type
-    const matchLevel = level === 'all' || v.level === level
-    return matchType && matchLevel
-  })
 }
 
 function shuffleCards(verbsToShuffle: Verb[]): Card[] {
@@ -93,11 +53,11 @@ function shuffleCards(verbsToShuffle: Verb[]): Card[] {
 }
 
 /**
- * Game session state.
+ * Game session state for the browser.
  *
- * Every ref comes from `useState`, so the state is scoped to one Nuxt app on the
- * client and to one request on the server. Plain module-level refs would be
- * shared across concurrent requests in the Worker and leak between users.
+ * The rules live in `app/core/game-core.ts`; this composable only adapts them to
+ * reactive Nuxt state. Every ref comes from `useState`, so the state is scoped to
+ * one Nuxt app on the client and to one request on the server.
  */
 export function useVerbGame() {
   const mode = useState<GameMode>('verbgame:mode', () => 'write-all')
@@ -116,118 +76,78 @@ export function useVerbGame() {
 
   const { recordAnswer } = useStats()
 
+  function snapshot(): GameSessionState {
+    return {
+      mode: mode.value,
+      verbCount: verbCount.value,
+      selectedType: selectedType.value,
+      selectedLevel: selectedLevel.value,
+      selectedVerbs: selectedVerbs.value,
+      currentIndex: currentIndex.value,
+      results: results.value,
+      isFinished: isFinished.value,
+      streak: streak.value,
+      maxStreak: maxStreak.value,
+      sessionStartTime: sessionStartTime.value,
+      sessionDuration: sessionDuration.value,
+    }
+  }
+
+  function applyState(next: GameSessionState) {
+    mode.value = next.mode
+    verbCount.value = next.verbCount
+    selectedType.value = next.selectedType
+    selectedLevel.value = next.selectedLevel
+    selectedVerbs.value = next.selectedVerbs
+    currentIndex.value = next.currentIndex
+    results.value = next.results
+    isFinished.value = next.isFinished
+    streak.value = next.streak
+    maxStreak.value = next.maxStreak
+    sessionStartTime.value = next.sessionStartTime
+    sessionDuration.value = next.sessionDuration
+  }
+
   function setupGame(
     newMode: GameMode,
     count: number | 'all',
     type: VerbType | 'all' = 'all',
     level: VerbLevel | 'all' = 'all'
   ) {
-    mode.value = newMode
-    selectedType.value = type
-    selectedLevel.value = level
-
-    const pool = filterVerbs(type, level)
-    const available = pool.length > 0 ? pool : verbs
-    const limit = count === 'all' ? available.length : Math.min(Math.max(1, count), available.length)
-
-    verbCount.value = limit
-    selectedVerbs.value = shuffle(available).slice(0, limit)
-    currentIndex.value = 0
-    results.value = []
-    isFinished.value = false
-    streak.value = 0
-    maxStreak.value = 0
-    sessionStartTime.value = Date.now()
-    sessionDuration.value = 0
-  }
-
-  function retryMistakes() {
-    const failed = results.value.filter((r) => !r.correct).map((r) => r.verb)
-    if (failed.length === 0) return
-
-    selectedVerbs.value = shuffle(failed)
-    verbCount.value = selectedVerbs.value.length
-    currentIndex.value = 0
-    results.value = []
-    isFinished.value = false
-    streak.value = 0
-    maxStreak.value = 0
-    sessionStartTime.value = Date.now()
+    applyState(createSession(verbs, { mode: newMode, count, type, level }, Date.now()))
   }
 
   function setupCustomVerbsGame(customVerbs: Verb[], newMode: GameMode = 'write-all') {
     if (customVerbs.length === 0) return
-    mode.value = newMode
-    selectedVerbs.value = shuffle(customVerbs)
-    verbCount.value = selectedVerbs.value.length
-    currentIndex.value = 0
-    results.value = []
-    isFinished.value = false
-    streak.value = 0
-    maxStreak.value = 0
-    sessionStartTime.value = Date.now()
-    sessionDuration.value = 0
+    applyState(createCustomSession(customVerbs, newMode, Date.now()))
   }
 
-  const currentVerb = computed<Verb | null>(() => selectedVerbs.value[currentIndex.value] ?? null)
+  function retryMistakes() {
+    const current = snapshot()
+    const next = retrySession(current, Date.now())
+    if (next !== current) applyState(next)
+  }
 
   function recordResult(result: GameResult) {
-    results.value.push(result)
-
-    if (result.correct) {
-      recordAnswer(result.verb, true)
-      streak.value++
-      if (streak.value > maxStreak.value) {
-        maxStreak.value = streak.value
-      }
-    } else {
-      recordAnswer(result.verb, false)
-      streak.value = 0
-    }
-
-    if (currentIndex.value < selectedVerbs.value.length - 1) {
-      currentIndex.value++
-    } else {
-      sessionDuration.value = Math.round((Date.now() - sessionStartTime.value) / 1000)
-      isFinished.value = true
-    }
+    recordAnswer(result.verb, result.correct)
+    applyState(applyResult(snapshot(), result, Date.now()))
   }
 
   function submitAnswers(answers: Record<TenseKey, string>) {
     const verb = currentVerb.value
     if (!verb) return
 
-    const trimmed: Record<TenseKey, string> = {
-      base: answers.base?.trim() ?? '',
-      past: answers.past?.trim() ?? '',
-      participle: answers.participle?.trim() ?? '',
-    }
-
-    const correct =
-      normalizedCompare(trimmed.base, verb.base) &&
-      normalizedCompare(trimmed.past, verb.past) &&
-      normalizedCompare(trimmed.participle, verb.participle)
-
-    recordResult({ verb, correct, userAnswers: trimmed })
+    const graded = gradeAnswers(verb, answers)
+    recordResult({ verb, correct: graded.correct, userAnswers: graded.answers })
   }
-
-  const score = computed<number>(() => results.value.filter((r) => r.correct).length)
-  const accuracy = computed<number>(() => {
-    if (results.value.length === 0) return 0
-    return Math.round((score.value / results.value.length) * 100)
-  })
 
   function resetGame() {
-    mode.value = 'write-all'
-    verbCount.value = 10
-    selectedVerbs.value = []
-    currentIndex.value = 0
-    results.value = []
-    isFinished.value = false
-    streak.value = 0
-    maxStreak.value = 0
-    sessionDuration.value = 0
+    applyState(resetSession(snapshot()))
   }
+
+  const currentVerb = computed<Verb | null>(() => selectedVerbs.value[currentIndex.value] ?? null)
+  const score = computed<number>(() => sessionScore(snapshot()))
+  const accuracy = computed<number>(() => sessionAccuracy(snapshot()))
 
   return {
     mode,
