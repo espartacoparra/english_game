@@ -1,75 +1,49 @@
-# Nuxt Minimal Starter
+# VerbMaster
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+English verb practice game built with Nuxt 4 and deployed to Cloudflare Workers.
+
+## Requirements
+
+- Node.js 22+
+- pnpm 11+
 
 ## Setup
 
-Make sure to install dependencies:
-
 ```bash
-# npm
-npm install
-
-# pnpm
 pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
 ```
 
-## Development Server
+## Development
 
-Start the development server on `http://localhost:3000`:
+Start the dev server on `http://localhost:3010`:
 
 ```bash
-# npm
-npm run dev
-
-# pnpm
 pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
 ```
 
-## Production
-
-Build the application for production:
+## Production build
 
 ```bash
-# npm
-npm run build
-
-# pnpm
 pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
 ```
 
-Locally preview production build:
+The Cloudflare preset (`cloudflare_module`) generates `.output/server/wrangler.json` and the
+static assets in `.output/public`.
+
+## Deploy
+
+Authenticate Wrangler once, then deploy:
 
 ```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
+pnpm exec wrangler login   # or export CLOUDFLARE_API_TOKEN
+pnpm deploy
 ```
 
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+`pnpm deploy` builds the app and runs `wrangler deploy --config .output/server/wrangler.json`.
+The Worker is named `english-game`.
+
+Preview a production build locally:
+
+```bash
+pnpm exec wrangler dev --config .output/server/wrangler.json
+```
