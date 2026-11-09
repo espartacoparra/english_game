@@ -26,7 +26,7 @@ Non-goals: accounts, ranked matchmaking, more than two players per room, paid Cl
 
 | ID | Spec | Route | Commit |
 | --- | --- | --- | --- |
-| T1 | S2, S5 | inline | feat(deploy): drop SST, pin Wrangler and add deploy scripts |
+| T1 | S2, S5 | inline | feat(deploy): drop SST, pin Wrangler and add deploy scripts (`a96302b`) |
 | T2 | S1 | inline | refactor(state): move game and stats state out of module singletons |
 | T3 | S1, S3 | worker | feat(game): extract a pure game reducer with tests |
 | T4 | S1 | inline | feat(router): add /room/[code] route |
