@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { verbs } from '~/data/verbs'
 import { useStats } from '~/composables/useStats'
+import { generateRoomCode } from '~/core/room-client'
 
 type Section = 'practice' | 'stats' | 'verbs' | 'synonyms' | 'antonyms' | 'cognates' | 'false-cognates'
 
@@ -10,6 +12,13 @@ const emit = defineEmits<{
 }>()
 
 const { summary, problemVerbs } = useStats()
+
+const router = useRouter()
+
+/** Multiplayer is a route of its own: the menu only mints the code. */
+function openMultiplayerRoom() {
+  router.push(`/room/${generateRoomCode()}`)
+}
 
 interface SectionCard {
   id: Section
@@ -132,6 +141,14 @@ const sectionCards = computed<SectionCard[]>(() => [
         <p class="card-desc">{{ card.description }}</p>
         <span class="card-metric">{{ card.metric }}</span>
         <span class="card-action">{{ card.action }} →</span>
+      </button>
+
+      <button type="button" class="section-card" @click="openMultiplayerRoom">
+        <div class="card-icon">👥</div>
+        <h2 class="card-title">Jugar con un amigo</h2>
+        <p class="card-desc">Crea una sala, compartí el enlace y compitan ronda a ronda en tiempo real.</p>
+        <span class="card-metric">2 jugadores · carrera de conjugaciones</span>
+        <span class="card-action">Crear sala →</span>
       </button>
     </div>
 

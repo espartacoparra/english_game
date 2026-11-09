@@ -7,6 +7,13 @@ export default defineNuxtConfig({
   devServer: {
     port: 3010
   },
+  runtimeConfig: {
+    public: {
+      // Local `wrangler dev` for workers/room. Override in production with
+      // NUXT_PUBLIC_ROOM_WS_URL (e.g. wss://english-game-room.<account>.workers.dev).
+      roomWsUrl: 'ws://127.0.0.1:8787'
+    }
+  },
   css: ['~/assets/css/main.css'],
   app: {
     head: {
