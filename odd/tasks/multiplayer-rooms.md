@@ -28,12 +28,20 @@ Non-goals: accounts, ranked matchmaking, more than two players per room, paid Cl
 | --- | --- | --- | --- |
 | T1 | S2, S5 | inline | feat(deploy): drop SST, pin Wrangler and add deploy scripts (`a96302b`) |
 | T2 | S1 | inline | refactor(state): move game and stats state out of module singletons |
-| T3 | S1, S3 | worker | feat(game): extract a pure game reducer with tests |
+| T3 | S1, S3 | worker | feat(game): extract a pure game reducer with tests (`be0849a`) |
 | T4 | S1 | inline | feat(router): add /room/[code] route |
 | T5 | S1 | worker | feat(room): Durable Object room with authoritative protocol |
 | T6 | S1, S3 | inline | feat(multiplayer): race mode over WebSocket transport |
 | T7 | S3 | inline | feat(multiplayer): fill-missing race |
 | T8 | S3 | inline | feat(multiplayer): card-matching turn-based board |
+
+## Slices
+
+- Slice 1 — deploy pipeline (T1): `a96302b`.
+- Slice 2 — SSR-safe state (T2): `be6b71f`.
+- Slice 3 — pure game core + tests (T3): `be0849a`.
+- Slice 4 — room server and client (T4-T6): pending.
+- Slice 5 — fill-missing and card-matching (T7-T8): pending.
 
 ## Log
 
@@ -48,3 +56,5 @@ Non-goals: accounts, ranked matchmaking, more than two players per room, paid Cl
 **L5 — 2026-11-09 — architecture decisions.** "Durable Object + WebSocket (recomendado)" and "Sacar SST, deploy con Wrangler".
 
 **L6 — 2026-11-09 — evidence.** SST config is dead but still points at AWS. `wrangler` is not a dependency and there is no deploy script. Nitro's generated Wrangler config carries no Durable Object bindings, so rooms need their own Worker or a custom config. `ssr: true` plus module-level refs leaks state across requests. Free plan gives 10 ms CPU per invocation, so SSR has to be measured.
+
+**L7 — 2026-11-09 — room worker evidence.** `workers/room` bundles clean (43.79 KiB / 9.06 KiB gzip) with the `ROOMS` Durable Object binding and the v1 SQLite migration. 30 pure machine tests added; suite at 58. The tests exposed one real defect: `joinRoom` checked `room_full` before `game_in_progress`, but a started room always has two players, so the `game_in_progress` error was unreachable and its Spanish message was wrong. Guards swapped. The Durable Object adapter (`room.ts`: sockets, hibernation, persistence, broadcast) has no automated test yet; it gets verified with two real clients in T6.

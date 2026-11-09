@@ -9,7 +9,8 @@
     "postinstall": "nuxt prepare",
     "preview": "nuxt preview",
     "test": "vitest run",
-    "deploy": "nuxt build && wrangler deploy --config .output/server/wrangler.json"
+    "deploy": "nuxt build && wrangler deploy --config .output/server/wrangler.json",
+    "deploy:room": "wrangler deploy --config workers/room/wrangler.jsonc"
   },
   "dependencies": {
     "nuxt": "^4.6.4",
