@@ -24,5 +24,6 @@
   },
   "overrides": {
     "nitropack": "npm:nitropack-nightly@latest"
-  }
+  },
+  "workspaces": ["."]
 }

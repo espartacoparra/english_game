@@ -5,7 +5,10 @@ export default defineNuxtConfig({
   spaLoadingTemplate: 'spa-loading-template.html',
   devtools: { enabled: false },
   devServer: {
-    port: 3010
+    port: 3010,
+    // Explicit string: the schema default is a `{ $resolve }` object that the
+    // dev CLI does not always resolve, and it crashes on `hostname.toLowerCase`.
+    host: 'localhost'
   },
   runtimeConfig: {
     public: {
