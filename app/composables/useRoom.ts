@@ -5,9 +5,11 @@ import {
   answerMessage,
   createWebSocketTransport,
   generatePlayerId,
+  isRoomRaceNotice,
   isValidRoomCode,
   joinMessage,
   normalizeRoomCode,
+  roomConnectionFailureMessage,
   roomSocketUrl,
   startMessage,
   type FinishedPayload,
@@ -60,9 +62,16 @@ export function useRoom() {
   const result = useState<RoomResult | null>('room:lastResult', () => null)
   const finished = useState<FinishedPayload | null>('room:finished', () => null)
   const errorMessage = useState<string | null>('room:errorMessage', () => null)
+  // A message about something that was nobody's fault, such as a round that
+  // closed while this player was typing. Neutral, and cleared by the next round.
+  const noticeMessage = useState<string | null>('room:noticeMessage', () => null)
   const playerId = useState<string>('room:playerId', () => '')
   const playerName = useState<string>('room:playerName', () => '')
   const joined = useState<boolean>('room:joined', () => false)
+  // The address the last attempt dialed. A failed dial names it, so a stopped
+  // room Worker reads as "nothing is listening there" instead of a generic
+  // "connection lost".
+  const socketUrl = useState<string>('room:socketUrl', () => '')
   // Partial credit means a round can add more than the single point the old
   // race awarded, so the mirror keeps track of what it already applied per
   // round instead of guessing from a result.
@@ -121,9 +130,12 @@ export function useRoom() {
     const config = useRuntimeConfig()
     const baseUrl = String(config.public.roomWsUrl ?? '')
 
+    const url = roomSocketUrl(baseUrl, code.value)
+    socketUrl.value = url
+
     let transport: RoomTransport
     try {
-      transport = createWebSocketTransport(roomSocketUrl(baseUrl, code.value))
+      transport = createWebSocketTransport(url)
     } catch (err) {
       console.error('Failed to open the room socket', err)
       status.value = 'error'
@@ -154,7 +166,9 @@ export function useRoom() {
 
     if (connection.value.attempts >= MAX_RECONNECT_ATTEMPTS) {
       status.value = 'error'
-      errorMessage.value = 'Se perdió la conexión con la sala'
+      // The rooms live in their own Worker: in development the app alone has
+      // nothing to connect to, and that is the most common cause by far.
+      errorMessage.value = roomConnectionFailureMessage(socketUrl.value)
       return
     }
 
@@ -246,6 +260,8 @@ export function useRoom() {
           roundIndex.value = event.index
           totalRounds.value = event.total
           progress.value = []
+          // A new round makes the previous one's lost race irrelevant.
+          noticeMessage.value = null
           break
         }
         case 'progress': {
@@ -268,7 +284,9 @@ export function useRoom() {
           break
         }
         case 'error': {
-          errorMessage.value = event.message
+          // A lost race is not a mistake: it must not read as one.
+          if (isRoomRaceNotice(event.code)) noticeMessage.value = event.message
+          else errorMessage.value = event.message
           break
         }
       }
@@ -352,6 +370,8 @@ export function useRoom() {
     result.value = null
     finished.value = null
     errorMessage.value = null
+    noticeMessage.value = null
+    socketUrl.value = ''
     mirrorRound.value = null
     mirroredPoints.value = {}
     status.value = 'idle'
@@ -435,6 +455,7 @@ export function useRoom() {
     result,
     finished,
     errorMessage,
+    noticeMessage,
     playerId,
     playerName,
     joined,

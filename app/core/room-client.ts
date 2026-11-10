@@ -149,6 +149,40 @@ export function roomSocketUrl(baseUrl: string, code: string): string {
   return `${baseUrl.trim().replace(/\/+$/, '')}/ws?code=${normalizeRoomCode(code)}`
 }
 
+/**
+ * Message for a room link that never opened.
+ *
+ * The rooms are served by their own Worker, so in local development the most
+ * common cause is simply that nothing is listening on `roomWsUrl`. Naming the
+ * address and the command that starts it turns "no funciona el multi" into one
+ * visible fix.
+ */
+export function roomConnectionFailureMessage(socketUrl: string): string {
+  const url = socketUrl.trim()
+  if (!url) return 'Se perdió la conexión con la sala'
+  return (
+    `No se pudo conectar con la sala en ${url}. ` +
+    'En desarrollo, el servidor de salas se inicia con `bun run dev:room` ' +
+    '(o ambos servidores con `bun run dev:all`).'
+  )
+}
+
+/**
+ * Error codes that are a lost race, not a player mistake.
+ *
+ * `stale_round` arrives when the round closed while the player was still
+ * typing, `not_playing` when the game ended in that same instant, and
+ * `not_your_turn` when the turn moved between the render and the click. None of
+ * them is something the player did wrong, so the room page reports them as a
+ * neutral notice instead of the red banner that reads as a reprimand — a
+ * correct answer that arrived second must not look like a failure.
+ */
+const RACE_CODES: readonly string[] = ['stale_round', 'not_playing', 'not_your_turn']
+
+export function isRoomRaceNotice(code: string): boolean {
+  return RACE_CODES.includes(code)
+}
+
 /* -------------------------------------------------------------- validation */
 
 const ROOM_PHASES: readonly RoomPhase[] = ['lobby', 'playing', 'finished']

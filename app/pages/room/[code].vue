@@ -30,6 +30,7 @@ const {
   result,
   finished,
   errorMessage,
+  noticeMessage,
   playerId,
   playerName,
   phase,
@@ -264,6 +265,9 @@ onUnmounted(() => {
     <template v-else>
       <p v-if="errorMessage" class="error-banner">
         {{ errorMessage }}
+      </p>
+      <p v-if="noticeMessage" class="notice-banner">
+        {{ noticeMessage }}
       </p>
       <p v-if="copyState === 'failed' && roomLink" class="hint-banner">
         No se pudo copiar. Enlace de la sala: <code>{{ roomLink }}</code>
@@ -575,6 +579,18 @@ onUnmounted(() => {
   color: #fecdd3;
   font-size: 0.85rem;
   font-weight: 600;
+}
+
+/* Information, not a reprimand: a round that closed while this player was
+   typing is a lost race, and the answer may well have been right. */
+.notice-banner {
+  padding: 0.7rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-inset);
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 .hint-banner {
