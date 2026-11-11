@@ -1,10 +1,19 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { verbs } from '~/data/verbs'
 import { useVerbGame } from '~/composables/useVerbGame'
+import { generateRoomCode, isValidRoomCode, normalizeRoomCode } from '~/core/room-client'
 import type { GameMode, VerbLevel, VerbType } from '~/types/verb'
 
+const router = useRouter()
 const { setupGame, filterVerbs } = useVerbGame()
+
+type PlayTarget = 'solo' | 'multiplayer'
+
+const playTarget = ref<PlayTarget>('solo')
+const joinCodeInput = ref('')
+const joinCodeError = ref('')
 
 const selectedType = ref<VerbType | 'all'>('all')
 const selectedLevel = ref<VerbLevel | 'all'>('all')
@@ -12,6 +21,21 @@ const selectedCount = ref<number | 'all'>(10)
 const selectedMode = ref<GameMode>('write-all')
 
 const countOptions = [5, 10, 20, 50] as const
+
+const targetOptions: { id: PlayTarget; title: string; desc: string; icon: string }[] = [
+  {
+    id: 'solo',
+    title: 'Solo (Single Player)',
+    desc: 'Practica a tu ritmo con rachas, pronunciación y estadísticas personales.',
+    icon: '👤',
+  },
+  {
+    id: 'multiplayer',
+    title: 'Multijugador (Sala en vivo)',
+    desc: 'Crea una sala en tiempo real con estos ajustes y compite con amigos.',
+    icon: '👥',
+  },
+]
 
 const typeOptions: { label: string; value: VerbType | 'all'; desc: string }[] = [
   { label: 'Todos', value: 'all', desc: `${verbs.length} verbos en total` },
@@ -67,8 +91,29 @@ const effectiveCount = computed(() => {
   return Math.min(selectedCount.value, filteredPool.value.length)
 })
 
-function startGame() {
-  setupGame(selectedMode.value, selectedCount.value, selectedType.value, selectedLevel.value)
+function handleAction() {
+  if (playTarget.value === 'solo') {
+    setupGame(selectedMode.value, selectedCount.value, selectedType.value, selectedLevel.value)
+  } else {
+    const code = generateRoomCode()
+    const query = new URLSearchParams({
+      mode: selectedMode.value,
+      count: String(selectedCount.value),
+      type: selectedType.value,
+      level: selectedLevel.value,
+    })
+    router.push(`/room/${code}?${query.toString()}`)
+  }
+}
+
+function handleJoinRoom() {
+  joinCodeError.value = ''
+  const code = normalizeRoomCode(joinCodeInput.value)
+  if (!isValidRoomCode(code)) {
+    joinCodeError.value = 'El código debe tener 6 letras o números (ej: ABC123)'
+    return
+  }
+  router.push(`/room/${code}`)
 }
 </script>
 
@@ -91,6 +136,27 @@ function startGame() {
     <div class="setup-grid">
       <!-- Left Column: Filters -->
       <div class="setup-card">
+        <!-- Target Selector: Solo vs Multiplayer -->
+        <section class="section">
+          <label class="section-label">0. ¿Cómo quieres jugar?</label>
+          <div class="target-grid">
+            <button
+              v-for="opt in targetOptions"
+              :key="opt.id"
+              type="button"
+              class="target-btn"
+              :class="{ active: playTarget === opt.id }"
+              @click="playTarget = opt.id"
+            >
+              <span class="target-icon">{{ opt.icon }}</span>
+              <div class="target-info">
+                <span class="target-title">{{ opt.title }}</span>
+                <span class="target-desc">{{ opt.desc }}</span>
+              </div>
+            </button>
+          </div>
+        </section>
+
         <!-- Filter 1: Type -->
         <section class="section">
           <label class="section-label">1. Tipo de verbos</label>
@@ -184,10 +250,40 @@ function startGame() {
           </div>
         </div>
 
-        <button class="cta-button" type="button" @click="startGame">
-          <span>Comenzar práctica</span>
-          <span class="cta-sub">({{ effectiveCount }} verbos seleccionados) →</span>
+        <button
+          class="cta-button"
+          :class="{ 'cta-button--multi': playTarget === 'multiplayer' }"
+          type="button"
+          @click="handleAction"
+        >
+          <template v-if="playTarget === 'solo'">
+            <span>Comenzar práctica solo</span>
+            <span class="cta-sub">({{ effectiveCount }} verbos seleccionados) →</span>
+          </template>
+          <template v-else>
+            <span>Crear sala multijugador</span>
+            <span class="cta-sub">(Invitar amigos con estos ajustes) 👥 →</span>
+          </template>
         </button>
+
+        <!-- Join existing room option -->
+        <div class="join-room-box">
+          <span class="join-room-title">¿Ya tienes un código de sala?</span>
+          <div class="join-room-form">
+            <input
+              v-model="joinCodeInput"
+              type="text"
+              class="join-room-input"
+              placeholder="Ej: ABC123"
+              maxlength="6"
+              @keyup.enter="handleJoinRoom"
+            />
+            <button type="button" class="join-room-btn" @click="handleJoinRoom">
+              Unirme
+            </button>
+          </div>
+          <p v-if="joinCodeError" class="join-room-error">{{ joinCodeError }}</p>
+        </div>
       </div>
     </div>
   </div>
@@ -532,6 +628,131 @@ function startGame() {
 
 .cta-button:active {
   transform: translateY(0);
+}
+
+.cta-button--multi {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
+}
+
+.cta-button--multi:hover {
+  box-shadow: 0 12px 30px rgba(16, 185, 129, 0.5);
+}
+
+/* Target Selector */
+.target-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+}
+
+.target-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.target-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.target-btn.active {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: var(--primary);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.2);
+}
+
+.target-icon {
+  font-size: 1.5rem;
+}
+
+.target-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.target-title {
+  font-size: 0.925rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.target-desc {
+  font-size: 0.775rem;
+  color: var(--text-dim);
+  line-height: 1.35;
+}
+
+/* Join Room Box */
+.join-room-box {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.join-room-title {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.join-room-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.join-room-input {
+  flex: 1;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.75rem;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.join-room-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+}
+
+.join-room-btn {
+  padding: 0.55rem 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.join-room-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.join-room-error {
+  font-size: 0.775rem;
+  color: #f87171;
+  margin: 0;
 }
 
 .cta-sub {

@@ -15,6 +15,8 @@ import RoomRoundList from '~/components/room/RoomRoundList.vue'
 import RoomRoundChoice from '~/components/room/RoomRoundChoice.vue'
 import RoomRoundBoard from '~/components/room/RoomRoundBoard.vue'
 
+import type { VerbLevel, VerbType } from '~/types/verb'
+
 const route = useRoute()
 
 const roomCode = computed(() => normalizeRoomCode(String(route.params.code ?? '')))
@@ -67,6 +69,27 @@ let copyTimer: ReturnType<typeof setTimeout> | null = null
 
 const queryMode = route.query.mode
 const selectedMode = ref<RoomMode>(isRoomMode(queryMode) ? queryMode : DEFAULT_ROOM_MODE)
+
+// Game setup options for the room
+const queryCount = route.query.count
+const parsedCount = queryCount === 'all' ? 'all' : Number(queryCount)
+const selectedCount = ref<number | 'all'>(
+  queryCount === 'all' ? 'all' : [5, 10, 15, 20].includes(parsedCount) ? parsedCount : 10
+)
+
+const queryType = String(route.query.type ?? '')
+const selectedType = ref<VerbType | 'all'>(
+  ['regular', 'irregular', 'all'].includes(queryType) ? (queryType as VerbType | 'all') : 'all'
+)
+
+const queryLevel = String(route.query.level ?? '')
+const selectedLevel = ref<VerbLevel | 'all'>(
+  ['A1', 'A2', 'B1', 'B2', 'all'].includes(queryLevel) ? (queryLevel as VerbLevel | 'all') : 'all'
+)
+
+const isVerbsMode = computed(() =>
+  ['write-all', 'fill-missing', 'card-matching'].includes(selectedMode.value)
+)
 
 /** Up to eight slots: the lobby shows the empty ones instead of hiding them. */
 const playerSlots = computed(() =>
@@ -179,7 +202,12 @@ function handleJoin(): void {
 
 function handleStart(): void {
   if (!canStart.value) return
-  start({ mode: selectedMode.value, count: ROUNDS_PER_GAME })
+  start({
+    mode: selectedMode.value,
+    count: selectedCount.value,
+    type: isVerbsMode.value ? selectedType.value : 'all',
+    level: isVerbsMode.value ? selectedLevel.value : 'all',
+  })
 }
 
 function handleReply(reply: RoundReply): void {
@@ -313,8 +341,72 @@ onUnmounted(() => {
           </div>
         </form>
 
-        <RoomModeSelect v-if="isHost" v-model="selectedMode" />
-        <p v-else class="mode-readonly">Modo: <strong>{{ modeLabel }}</strong></p>
+        <div v-if="isHost" class="room-setup-options">
+          <RoomModeSelect v-model="selectedMode" label="Modo de juego" />
+
+          <div class="setup-row">
+            <div class="setup-field">
+              <label class="field-label">Rondas</label>
+              <div class="mini-chip-group">
+                <button
+                  v-for="cnt in [5, 10, 15, 20]"
+                  :key="cnt"
+                  type="button"
+                  class="mini-chip"
+                  :class="{ active: selectedCount === cnt }"
+                  @click="selectedCount = cnt"
+                >
+                  {{ cnt }}
+                </button>
+              </div>
+            </div>
+
+            <template v-if="isVerbsMode">
+              <div class="setup-field">
+                <label class="field-label">Tipo</label>
+                <div class="mini-chip-group">
+                  <button
+                    v-for="t in [{ id: 'all', label: 'Todos' }, { id: 'irregular', label: 'Irreg.' }, { id: 'regular', label: 'Reg.' }]"
+                    :key="t.id"
+                    type="button"
+                    class="mini-chip"
+                    :class="{ active: selectedType === t.id }"
+                    @click="selectedType = t.id as VerbType | 'all'"
+                  >
+                    {{ t.label }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="setup-field">
+                <label class="field-label">Nivel</label>
+                <div class="mini-chip-group">
+                  <button
+                    v-for="lvl in ['all', 'A1', 'A2', 'B1', 'B2']"
+                    :key="lvl"
+                    type="button"
+                    class="mini-chip"
+                    :class="{ active: selectedLevel === lvl }"
+                    @click="selectedLevel = lvl as VerbLevel | 'all'"
+                  >
+                    {{ lvl === 'all' ? 'Todos' : lvl }}
+                  </button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <div v-else class="mode-readonly-box">
+          <p class="mode-readonly">Modo: <strong>{{ modeLabel }}</strong></p>
+          <p class="config-readonly">
+            <span>Rondas: <strong>{{ selectedCount }}</strong></span>
+            <template v-if="isVerbsMode">
+              <span> · Tipo: <strong>{{ selectedType === 'all' ? 'Todos' : selectedType }}</strong></span>
+              <span> · Nivel: <strong>{{ selectedLevel === 'all' ? 'Todos' : selectedLevel }}</strong></span>
+            </template>
+          </p>
+        </div>
 
         <button type="button" class="primary-btn" :disabled="!canStart" @click="handleStart">
           Empezar partida
@@ -713,6 +805,69 @@ onUnmounted(() => {
 .mode-readonly {
   font-size: 0.85rem;
   color: var(--text-muted);
+}
+
+.mode-readonly-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.config-readonly {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.room-setup-options {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.setup-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.setup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.mini-chip-group {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.mini-chip {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.775rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mini-chip:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.mini-chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
 }
 
 .primary-btn {

@@ -74,7 +74,7 @@ watch(
         <div class="brand" @click="goHome">
           <div class="brand-logo">⚡</div>
           <div class="brand-text">
-            <span class="brand-name">VerbMaster</span>
+            <span class="brand-name">The Best IFL Team</span>
             <span class="brand-tag">English Mastery</span>
           </div>
         </div>

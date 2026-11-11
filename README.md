@@ -1,6 +1,6 @@
-# VerbMaster
+# The Best IFL Team
 
-English verb practice game built with Nuxt 4 and deployed to Cloudflare Workers.
+English practice game and multiplayer arena built with Nuxt 4 and deployed to Cloudflare Workers.
 
 ## Requirements
 
@@ -67,15 +67,41 @@ static assets in `.output/public`.
 
 ## Deploy
 
-Authenticate Wrangler once, then deploy:
+Authenticate Wrangler once: `pnpm exec wrangler login` (or export
+`CLOUDFLARE_API_TOKEN`).
+
+The app and the rooms are **two** Workers, and the multiplayer link only works
+when both are deployed and the app is built pointing at the room Worker. Deploy
+both with one command:
 
 ```bash
-pnpm exec wrangler login   # or export CLOUDFLARE_API_TOKEN
-pnpm deploy
+pnpm deploy:all
 ```
 
-`pnpm deploy` builds the app and runs `wrangler deploy --config .output/server/wrangler.json`.
-The Worker is named `english-game`.
+That runs, in order:
+
+1. `wrangler deploy --config workers/room/wrangler.jsonc` — publishes the room
+   Worker as `english-game-room.<account-subdomain>.workers.dev`.
+2. `nuxt build` — builds the app.
+3. `wrangler deploy --config .output/server/wrangler.json` — publishes the app
+   as `english-game.<account-subdomain>.workers.dev`.
+
+Each step is also available alone (`pnpm deploy:room`, `pnpm deploy`).
+
+### Room address
+
+`nuxt.config.ts` picks the address the browser dials from the build mode:
+
+| Build | `runtimeConfig.public.roomWsUrl` |
+| --- | --- |
+| `pnpm dev` | `ws://127.0.0.1:8787` (local `wrangler dev`) |
+| `pnpm build` | `wss://english-game-room.espartaco-ing.workers.dev` |
+
+`NUXT_PUBLIC_ROOM_WS_URL` overrides both (a custom domain, another account).
+A deployed app served over https must dial `wss://`; the browser blocks a `ws:`
+dial from an https page as mixed content, so a wrong value fails exactly like a
+missing room Worker. If the room Worker is deployed under a different name, set
+the variable and rebuild.
 
 Preview a production build locally:
 

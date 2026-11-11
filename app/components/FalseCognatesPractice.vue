@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { FALSE_COGNATE_ITEMS } from '~/data/practice'
+import RoomModeBanner from '~/components/room/RoomModeBanner.vue'
 
 const falseCognates = FALSE_COGNATE_ITEMS
 
@@ -47,6 +48,12 @@ const isFinished = computed(() => currentIndex.value >= falseCognates.length)
 
 <template>
   <div class="practice-container animate-pop">
+    <RoomModeBanner
+      mode="false-cognates"
+      label="Falsos Cognados"
+      description="Cuidado con las trampas en vivo: responde más rápido y sin caer en el error común."
+    />
+
     <header class="practice-header">
       <div class="header-top">
         <h1 class="practice-title">Falsos Cognados</h1>

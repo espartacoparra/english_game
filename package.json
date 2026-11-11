@@ -13,7 +13,8 @@
     "dev:room": "wrangler dev --config workers/room/wrangler.jsonc --port 8787",
     "smoke:room": "node scripts/room-smoke.mjs",
     "deploy": "nuxt build && wrangler deploy --config .output/server/wrangler.json",
-    "deploy:room": "wrangler deploy --config workers/room/wrangler.jsonc"
+    "deploy:room": "wrangler deploy --config workers/room/wrangler.jsonc",
+    "deploy:all": "wrangler deploy --config workers/room/wrangler.jsonc && nuxt build && wrangler deploy --config .output/server/wrangler.json"
   },
   "dependencies": {
     "nuxt": "^4.6.4",

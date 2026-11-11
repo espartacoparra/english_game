@@ -149,21 +149,70 @@ export function roomSocketUrl(baseUrl: string, code: string): string {
   return `${baseUrl.trim().replace(/\/+$/, '')}/ws?code=${normalizeRoomCode(code)}`
 }
 
+/** The slice of `window.location` the room needs, so this stays DOM-free. */
+export interface PageLocationLike {
+  protocol: string
+  host: string
+}
+
+/**
+ * Base address for the rooms: the configured one, else the page's own origin.
+ *
+ * The room Worker is normally its own deployment, so the config decides. An
+ * empty config falls back to the page origin (where a same-origin `/ws` route
+ * would live) instead of silently dialing a dev machine, and https pages get
+ * `wss:`, because a browser blocks a `ws:` dial from an https page.
+ */
+export function resolveRoomWsUrl(
+  configured: string | null | undefined,
+  location?: PageLocationLike | null
+): string {
+  const explicit = (configured ?? '').trim()
+  if (explicit) return explicit
+  if (!location || !location.host) return ''
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${protocol}//${location.host}`
+}
+
+const LOOPBACK_HOSTS: readonly string[] = ['localhost', '127.0.0.1', '0.0.0.0', '::1', '[::1]']
+
+/** True when the address only exists on the machine that runs the browser. */
+export function isLoopbackSocketUrl(socketUrl: string): boolean {
+  const trimmed = socketUrl.trim()
+  if (!trimmed) return false
+  let host = ''
+  try {
+    host = new URL(trimmed).hostname.toLowerCase()
+  } catch {
+    // Not an absolute URL: fall back to the host part of a bare `host/path`.
+    host = trimmed.split('/')[0]?.split('?')[0]?.toLowerCase() ?? ''
+  }
+  return LOOPBACK_HOSTS.includes(host) || host.startsWith('127.')
+}
+
 /**
  * Message for a room link that never opened.
  *
- * The rooms are served by their own Worker, so in local development the most
- * common cause is simply that nothing is listening on `roomWsUrl`. Naming the
- * address and the command that starts it turns "no funciona el multi" into one
- * visible fix.
+ * The rooms are served by their own Worker, so a dial that fails has two very
+ * different causes. A loopback address means nothing is listening on this
+ * machine, and naming `dev:room` turns "no funciona el multi" into one visible
+ * fix. A deployed address means the room Worker is down or unreachable, and the
+ * dev command would be noise there — but the address itself is always worth
+ * showing, because it is the one thing that tells the two cases apart.
  */
 export function roomConnectionFailureMessage(socketUrl: string): string {
   const url = socketUrl.trim()
   if (!url) return 'Se perdió la conexión con la sala'
+  if (isLoopbackSocketUrl(url)) {
+    return (
+      `No se pudo conectar con la sala en ${url}. ` +
+      'En desarrollo, el servidor de salas se inicia con `bun run dev:room` ' +
+      '(o ambos servidores con `bun run dev:all`).'
+    )
+  }
   return (
     `No se pudo conectar con la sala en ${url}. ` +
-    'En desarrollo, el servidor de salas se inicia con `bun run dev:room` ' +
-    '(o ambos servidores con `bun run dev:all`).'
+    'Revisá tu conexión e intentá de nuevo en unos segundos.'
   )
 }
 

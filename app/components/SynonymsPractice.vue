@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { SYNONYM_ITEMS } from '~/data/practice'
+import RoomModeBanner from '~/components/room/RoomModeBanner.vue'
 
 const words = SYNONYM_ITEMS
 
@@ -61,6 +62,13 @@ const isFinished = computed(() => currentIndex.value >= words.length)
 
 <template>
   <div class="practice-container animate-pop">
+    <!-- Multiplayer Banner -->
+    <RoomModeBanner
+      mode="synonyms"
+      label="Sinónimos"
+      description="¿Quién encuentra más sinónimos antes de que se acabe el tiempo? Rondas en vivo."
+    />
+
     <header class="practice-header">
       <div class="header-top">
         <h1 class="practice-title">Sinónimos</h1>

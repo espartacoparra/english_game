@@ -9,6 +9,7 @@ import {
   isValidRoomCode,
   joinMessage,
   normalizeRoomCode,
+  resolveRoomWsUrl,
   roomConnectionFailureMessage,
   roomSocketUrl,
   startMessage,
@@ -128,7 +129,10 @@ export function useRoom() {
     connection.value.transport = null
 
     const config = useRuntimeConfig()
-    const baseUrl = String(config.public.roomWsUrl ?? '')
+    const baseUrl = resolveRoomWsUrl(
+      String(config.public.roomWsUrl ?? ''),
+      typeof window === 'undefined' ? null : window.location
+    )
 
     const url = roomSocketUrl(baseUrl, code.value)
     socketUrl.value = url

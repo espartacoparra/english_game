@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { COGNATE_ITEMS } from '~/data/practice'
+import RoomModeBanner from '~/components/room/RoomModeBanner.vue'
 
 const cognates = COGNATE_ITEMS
 
@@ -47,6 +48,12 @@ const isFinished = computed(() => currentIndex.value >= cognates.length)
 
 <template>
   <div class="practice-container animate-pop">
+    <RoomModeBanner
+      mode="cognates"
+      label="Cognados"
+      description="Partida de opción múltiple: ¿quién identifica más rápido el significado real?"
+    />
+
     <header class="practice-header">
       <div class="header-top">
         <h1 class="practice-title">Cognados Verdaderos</h1>

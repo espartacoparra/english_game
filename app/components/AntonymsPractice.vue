@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ANTONYM_ITEMS } from '~/data/practice'
+import RoomModeBanner from '~/components/room/RoomModeBanner.vue'
 
 const words = ANTONYM_ITEMS
 
@@ -57,6 +58,12 @@ const isFinished = computed(() => currentIndex.value >= words.length)
 
 <template>
   <div class="practice-container animate-pop">
+    <RoomModeBanner
+      mode="antonyms"
+      label="Antónimos"
+      description="Compitan escribiendo opuestos en tiempo real. ¡Rondas rápidas!"
+    />
+
     <header class="practice-header">
       <div class="header-top">
         <h1 class="practice-title">Antónimos</h1>

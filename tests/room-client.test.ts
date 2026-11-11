@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { isRoomRaceNotice, roomConnectionFailureMessage } from '../app/core/room-client'
+import {
+  isLoopbackSocketUrl,
+  isRoomRaceNotice,
+  resolveRoomWsUrl,
+  roomConnectionFailureMessage,
+  roomSocketUrl,
+} from '../app/core/room-client'
 
 /**
  * The room link is served by its own Worker, so a failed dial in development is
@@ -19,6 +25,68 @@ describe('roomConnectionFailureMessage', () => {
   it('falls back to the generic message when no address was recorded', () => {
     expect(roomConnectionFailureMessage('')).toBe('Se perdió la conexión con la sala')
     expect(roomConnectionFailureMessage('   ')).toBe('Se perdió la conexión con la sala')
+  })
+
+  /**
+   * A deployed room Worker cannot be started by the player and lives on the
+   * other side of the network, so the dev command is noise there. The address
+   * still has to appear: it is what separates "the Worker is down" from "the
+   * app was built pointing at a dev machine".
+   */
+  it('drops the dev hint for a deployed room Worker but still names the address', () => {
+    const url = 'wss://english-game-room.example.workers.dev/ws?code=ABC123'
+    const message = roomConnectionFailureMessage(url)
+
+    expect(message).toContain(url)
+    expect(message).not.toContain('dev:room')
+    expect(message).not.toContain('dev:all')
+  })
+})
+
+/** The dial address is configuration, and a wrong one fails silently otherwise. */
+describe('resolveRoomWsUrl', () => {
+  it('uses the configured address verbatim, trailing slash included', () => {
+    expect(resolveRoomWsUrl('wss://rooms.example.dev/', { protocol: 'https:', host: 'app.example.dev' })).toBe(
+      'wss://rooms.example.dev/'
+    )
+  })
+
+  it('falls back to the page origin with wss on an https page', () => {
+    expect(resolveRoomWsUrl('', { protocol: 'https:', host: 'english-game.example.workers.dev' })).toBe(
+      'wss://english-game.example.workers.dev'
+    )
+  })
+
+  it('falls back to ws on a plain http page', () => {
+    expect(resolveRoomWsUrl(undefined, { protocol: 'http:', host: 'localhost:3010' })).toBe(
+      'ws://localhost:3010'
+    )
+  })
+
+  it('yields no base address when there is neither config nor a location', () => {
+    expect(resolveRoomWsUrl('', null)).toBe('')
+    expect(resolveRoomWsUrl('  ')).toBe('')
+  })
+
+  it('builds the same-origin socket URL the transport dials', () => {
+    const base = resolveRoomWsUrl('', { protocol: 'https:', host: 'rooms.example.dev' })
+
+    expect(roomSocketUrl(base, 'abc123')).toBe('wss://rooms.example.dev/ws?code=ABC123')
+  })
+})
+
+describe('isLoopbackSocketUrl', () => {
+  it('recognizes the addresses that only exist on the dev machine', () => {
+    expect(isLoopbackSocketUrl('ws://127.0.0.1:8787/ws?code=ABC123')).toBe(true)
+    expect(isLoopbackSocketUrl('ws://localhost:8787/ws')).toBe(true)
+    expect(isLoopbackSocketUrl('ws://[::1]:8787/ws')).toBe(true)
+  })
+
+  it('treats a deployed room Worker as remote', () => {
+    expect(isLoopbackSocketUrl('wss://english-game-room.example.workers.dev/ws?code=ABC123')).toBe(
+      false
+    )
+    expect(isLoopbackSocketUrl('')).toBe(false)
   })
 })
 
