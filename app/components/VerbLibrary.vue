@@ -450,13 +450,30 @@ function practice(verb: Verb) {
 }
 
 @media (max-width: 560px) {
+  .library-container {
+    padding: 1.25rem 0.85rem 3rem;
+    gap: 1rem;
+  }
+
   .verb-row {
     flex-direction: column;
     align-items: flex-start;
   }
+
   .row-side {
     align-self: stretch;
     justify-content: space-between;
+  }
+
+  /* Finger-sized controls: the chips and the play button are the main actions. */
+  .chip-btn {
+    min-height: 2.5rem;
+  }
+
+  .practice-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+    font-size: 0.85rem;
   }
 }
 

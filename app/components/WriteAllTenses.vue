@@ -307,6 +307,34 @@ function handleNext() {
   }
 }
 
+/* Phone layout: the back button, the progress text and the streak badge do not
+   fit on one row, so the progress bar gets its own full-width line. */
+@media (max-width: 560px) {
+  .game-wrapper {
+    padding: 1rem 0.85rem 2.5rem;
+  }
+
+  .game-header {
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+  }
+
+  .exit-btn {
+    min-height: 2.5rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .streak-container {
+    min-width: 0;
+    margin-left: auto;
+  }
+
+  .header-center {
+    flex: 1 1 100%;
+  }
+}
+
 .verb-meta {
   display: flex;
   align-items: center;

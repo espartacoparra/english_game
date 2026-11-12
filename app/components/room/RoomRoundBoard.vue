@@ -353,7 +353,10 @@ function handleSubmit(): void {
   font-size: 1.15rem;
   font-weight: 700;
   font-family: var(--font-mono);
-  word-break: break-word;
+  /* `break-word`, not `word-break: break-word`: long labels like
+     "reportar/informar" must break at the slash, not in the middle of a word. */
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .board-card:hover:enabled {
@@ -423,5 +426,20 @@ function handleSubmit(): void {
   font-size: 0.8rem;
   color: var(--text-dim);
   text-align: center;
+}
+
+@media (max-width: 560px) {
+  .card-grid {
+    gap: 0.65rem;
+  }
+
+  .board-card {
+    min-height: 84px;
+    padding: 0.85rem 0.5rem;
+  }
+
+  .card-text {
+    font-size: 0.95rem;
+  }
 }
 </style>

@@ -1083,4 +1083,28 @@ onUnmounted(() => {
 .waiting-tag {
   color: var(--text-dim);
 }
+
+@media (max-width: 560px) {
+  .room-page {
+    padding: 1rem 0.85rem 2.5rem;
+  }
+
+  .room-card {
+    padding: 1.1rem;
+  }
+
+  .ghost-btn {
+    min-height: 2.5rem;
+    padding: 0.5rem 0.85rem;
+  }
+
+  .exit-btn {
+    min-height: 2.5rem;
+  }
+
+  .text-input {
+    min-width: 0;
+    font-size: 1rem;
+  }
+}
 </style>

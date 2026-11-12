@@ -315,6 +315,8 @@ const stageSubtitle = computed(() => {
   padding: 1.5rem 1rem 3rem;
 }
 
+
+
 .game-header {
   display: flex;
   align-items: center;
@@ -527,8 +529,11 @@ const stageSubtitle = computed(() => {
 }
 
 @media (max-width: 550px) {
+  /* minmax(0, 1fr), not 1fr: a long card word like "comenzar/iniciar" has a wide
+     min-content width and used to push the second column outside the card. */
   .grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
   }
 }
 
@@ -567,6 +572,7 @@ const stageSubtitle = computed(() => {
   font-size: 1.15rem;
   font-weight: 700;
   font-family: var(--font-mono);
+  overflow-wrap: break-word;
 }
 
 .round-complete-box {
@@ -606,5 +612,28 @@ const stageSubtitle = computed(() => {
 .next-round-btn:hover {
   filter: brightness(1.1);
   transform: translateY(-1px);
+}
+
+@media (max-width: 560px) {
+  .card-matching-wrapper {
+    padding: 1rem 0.85rem 2.5rem;
+  }
+
+  .title {
+    font-size: 1.35rem;
+  }
+
+  .exit-btn {
+    min-height: 2.5rem;
+  }
+
+  .verb-card {
+    min-height: 84px;
+    padding: 0.85rem 0.5rem;
+  }
+
+  .card-text {
+    font-size: 1rem;
+  }
 }
 </style>

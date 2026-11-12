@@ -247,6 +247,16 @@ const sectionCards = computed<SectionCard[]>(() => [
   .mini-summary {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  .menu-container {
+    padding: 1.5rem 0.85rem 3rem;
+  }
+
+  .card-action--button {
+    min-height: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+  }
 }
 
 .mini-cell {

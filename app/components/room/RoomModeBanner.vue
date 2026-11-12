@@ -93,6 +93,8 @@ function handleJoin() {
   }
 }
 
+
+
 .banner-left {
   display: flex;
   align-items: flex-start;
@@ -203,5 +205,43 @@ function handleJoin() {
 .join-inline-error {
   font-size: 0.75rem;
   color: #f87171;
+}
+
+/* Phone layout: the badge used to sit beside the text and squeeze it into a
+   narrow column; stack it and give the actions the full width. */
+@media (max-width: 639px) {
+  .mode-mp-banner {
+    padding: 1rem;
+  }
+
+  .banner-left {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .banner-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .banner-btn {
+    width: 100%;
+    min-height: 2.75rem;
+  }
+
+  .join-inline-form {
+    flex-wrap: wrap;
+  }
+
+  .join-inline-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .join-inline-submit {
+    flex: 0 0 auto;
+    min-height: 2.5rem;
+  }
 }
 </style>

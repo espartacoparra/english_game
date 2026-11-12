@@ -362,4 +362,20 @@ function handleSubmit(): void {
   color: var(--text-dim);
   text-align: center;
 }
+
+@media (max-width: 560px) {
+  .ghost-btn {
+    min-height: 2.5rem;
+    padding: 0.5rem 0.85rem;
+  }
+
+  .remove-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .list-input {
+    min-width: 0;
+  }
+}
 </style>

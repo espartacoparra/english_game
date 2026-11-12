@@ -61,6 +61,23 @@ html, body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Mobile base: nothing may push the page wider than the screen, and form
+   controls must stay finger-sized. */
+img, svg, video, canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  max-width: 100%;
+}
+
+pre, code, table {
+  max-width: 100%;
 }
 
 /* Animations */

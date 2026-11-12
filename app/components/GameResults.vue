@@ -427,4 +427,69 @@ function formatDuration(sec: number): string {
   filter: brightness(1.1);
   transform: translateY(-1px);
 }
+
+/* Phone layout: the per-tense rows are a two-column comparison and the review
+   header is a two-column row; both have to stack to stay readable. */
+@media (max-width: 560px) {
+  .results-container {
+    padding: 1.5rem 0.85rem 3rem;
+  }
+
+  .trophy-badge {
+    font-size: 2.5rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .stat-card {
+    padding: 1rem 0.75rem;
+  }
+
+  .stat-number {
+    font-size: 1.35rem;
+  }
+
+  .review-section {
+    padding: 1.1rem;
+  }
+
+  .review-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+  }
+
+  .review-item {
+    padding: 0.85rem;
+  }
+
+  .item-top {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .tense-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+  }
+
+  .tense-name-col {
+    min-width: 0;
+  }
+
+  .tense-comparison {
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+  }
+
+  .retry-btn,
+  .primary-btn {
+    min-height: 3rem;
+  }
+}
 </style>

@@ -455,6 +455,10 @@ function handleReset() {
 }
 
 @media (max-width: 560px) {
+  .stats-container {
+    padding: 1.25rem 0.85rem 3rem;
+    gap: 1rem;
+  }
   .verb-row {
     flex-direction: column;
     align-items: flex-start;

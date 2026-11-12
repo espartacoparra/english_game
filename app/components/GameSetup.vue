@@ -760,4 +760,109 @@ function handleJoinRoom() {
   font-weight: 500;
   opacity: 0.9;
 }
+
+/* Phone layout: the setup card is the widest content in the app and its rows
+   (mode header, count header, join form) are all two-column at desktop. */
+@media (max-width: 560px) {
+  .setup-container {
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .hero {
+    margin-bottom: 1.75rem;
+  }
+
+  .hero-subtitle {
+    font-size: 0.95rem;
+  }
+
+  .setup-card {
+    padding: 1.15rem;
+    gap: 1.25rem;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .mode-card {
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.85rem;
+  }
+
+  .mode-icon {
+    flex: 0 0 auto;
+    width: 1.75rem;
+    font-size: 1.5rem;
+    text-align: center;
+  }
+
+  .mode-info {
+    min-width: 0;
+  }
+
+  .mode-header-line {
+    flex-wrap: wrap;
+    gap: 0.35rem 0.5rem;
+  }
+
+  .mode-title {
+    font-size: 0.95rem;
+  }
+
+  .mode-radio {
+    flex: 0 0 auto;
+    margin-top: 0.2rem;
+  }
+
+  .target-btn {
+    gap: 0.7rem;
+    padding: 0.75rem 0.85rem;
+  }
+
+  .target-icon {
+    flex: 0 0 auto;
+  }
+
+  .target-info {
+    min-width: 0;
+  }
+
+  .cta-button {
+    padding: 0.9rem 1rem;
+    font-size: 1rem;
+  }
+
+  /* An <input> keeps its intrinsic 20-character width as a floor even with
+     min-width: 0, which widened this card to 392px on a 360px phone. */
+  .join-room-input {
+    width: 0;
+    min-width: 0;
+    flex: 1 1 auto;
+    font-size: 1rem;
+  }
+
+  .join-room-btn {
+    flex: 0 0 auto;
+    min-height: 2.75rem;
+    padding: 0.55rem 1.1rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .hero-title {
+    font-size: 1.75rem;
+  }
+
+  .count-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .count-btn--all {
+    grid-column: span 1;
+  }
+}
 </style>

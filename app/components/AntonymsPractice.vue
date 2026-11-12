@@ -448,4 +448,38 @@ const isFinished = computed(() => currentIndex.value >= words.length)
 .restart-btn:hover {
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
+
+/* Phone layout: the header row and the answer row are two-column at desktop. */
+@media (max-width: 560px) {
+  .practice-container {
+    padding: 1.25rem 0.85rem 3rem;
+  }
+
+  .practice-title {
+    font-size: 1.6rem;
+  }
+
+  .header-top {
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .reset-btn {
+    flex: 0 0 auto;
+    min-height: 2.5rem;
+    white-space: nowrap;
+  }
+
+  .input-row input {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 2.9rem;
+    font-size: 1rem;
+  }
+
+  .add-btn,
+  .check-btn {
+    min-height: 2.9rem;
+  }
+}
 </style>

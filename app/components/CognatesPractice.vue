@@ -338,4 +338,36 @@ const isFinished = computed(() => currentIndex.value >= cognates.length)
 .restart-btn:hover {
   box-shadow: 0 4px 12px var(--primary-glow);
 }
+
+/* Phone layout: the header row and the answer row are two-column at desktop. */
+@media (max-width: 560px) {
+  .practice-container {
+    padding: 1.25rem 0.85rem 3rem;
+  }
+
+  .practice-title {
+    font-size: 1.6rem;
+  }
+
+  .header-top {
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .reset-btn {
+    flex: 0 0 auto;
+    min-height: 2.5rem;
+    white-space: nowrap;
+  }
+
+  .actions {
+    gap: 0.6rem;
+  }
+
+  .known-btn,
+  .unknown-btn {
+    min-height: 2.9rem;
+    font-size: 0.875rem;
+  }
+}
 </style>
