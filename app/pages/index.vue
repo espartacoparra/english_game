@@ -6,8 +6,7 @@ import StatsPanel from '~/components/StatsPanel.vue'
 import VerbLibrary from '~/components/VerbLibrary.vue'
 import SynonymsPractice from '~/components/SynonymsPractice.vue'
 import AntonymsPractice from '~/components/AntonymsPractice.vue'
-import CognatesPractice from '~/components/CognatesPractice.vue'
-import FalseCognatesPractice from '~/components/FalseCognatesPractice.vue'
+import CognateClassifyPractice from '~/components/CognateClassifyPractice.vue'
 import { useVerbGame } from '~/composables/useVerbGame'
 import type { GameMode, Verb } from '~/types/verb'
 
@@ -15,6 +14,7 @@ const WriteAllTenses = defineAsyncComponent(() => import('~/components/WriteAllT
 const FillMissingTense = defineAsyncComponent(() => import('~/components/FillMissingTense.vue'))
 const CardMatching = defineAsyncComponent(() => import('~/components/CardMatching.vue'))
 const GameResults = defineAsyncComponent(() => import('~/components/GameResults.vue'))
+//const LivingMapGame = defineAsyncComponent(() => import('~/components/LivingMapGame.vue'))
 
 type Section = 'menu' | 'practice' | 'stats' | 'verbs' | 'synonyms' | 'antonyms' | 'cognates' | 'false-cognates'
 
@@ -29,6 +29,7 @@ const navLinks: { id: Section; label: string }[] = [
   { id: 'antonyms', label: 'Antónimos' },
   { id: 'cognates', label: 'Cognados' },
   { id: 'false-cognates', label: 'Falsos Cognados' },
+//{ id: 'living-map', label: 'Mapa Vivo' },
   { id: 'stats', label: 'Estadísticas' },
   { id: 'verbs', label: 'Verbos' },
 ]
@@ -182,8 +183,9 @@ watch(
         <GameSetup v-else-if="section === 'practice'" />
         <SynonymsPractice v-else-if="section === 'synonyms'" />
         <AntonymsPractice v-else-if="section === 'antonyms'" />
-        <CognatesPractice v-else-if="section === 'cognates'" />
-        <FalseCognatesPractice v-else-if="section === 'false-cognates'" />
+        <CognateClassifyPractice v-else-if="section === 'cognates'" mode="cognates" />
+        <CognateClassifyPractice v-else-if="section === 'false-cognates'" mode="false-cognates" />
+        <LivingMapGame v-else-if="section === 'living-map'" />
         <StatsPanel v-else-if="section === 'stats'" @practice="startCustomPractice" />
         <VerbLibrary v-else-if="section === 'verbs'" @practice="startCustomPractice" />
       </template>
